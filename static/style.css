@@ -1,0 +1,187 @@
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #dff7e5, #eef8ff);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.container { width: 92%; max-width: 650px; }
+.card {
+    background: white;
+    padding: 38px;
+    border-radius: 22px;
+    box-shadow: 0 15px 45px rgba(0,0,0,.12);
+    text-align: center;
+}
+h1 { color: #176b3a; margin-bottom: 8px; }
+.subtitle { color: #666; margin-bottom: 28px; }
+input[type=file] {
+    width: 100%;
+    padding: 15px;
+    border: 2px dashed #77b88c;
+    border-radius: 12px;
+    margin-bottom: 18px;
+}
+button {
+    border: 0;
+    padding: 14px 25px;
+    border-radius: 10px;
+    background: #176b3a;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+button:hover { background: #0f4d29; }
+.result {
+    margin-top: 28px;
+    padding: 22px;
+    border-radius: 15px;
+    background: #e9f8ee;
+}
+.disease { font-size: 22px; font-weight: bold; color: #176b3a; }
+.error {
+    margin-top: 20px;
+    padding: 14px;
+    background: #ffe7e7;
+    color: #a00000;
+    border-radius: 10px;
+}
+.shap-section {
+    margin-top: 30px;
+    padding: 25px;
+    text-align: center;
+    border-radius: 20px;
+    background: #f0f8f3;
+}
+
+.shap-section h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.shap-section p {
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.shap-image {
+    width: 100%;
+    max-width: 650px;
+    border-radius: 15px;
+    display: block;
+    margin: auto;
+}
+/* =========================
+   ORIGINAL IMAGE
+========================= */
+
+.original-section {
+    margin-top: 30px;
+    padding: 25px;
+    text-align: center;
+    background: #f0f8f3;
+    border-radius: 20px;
+}
+
+.original-section h2 {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.original-section p {
+    margin-bottom: 20px;
+}
+
+.original-image {
+    width: 100%;
+    max-width: 500px;
+    max-height: 500px;
+    object-fit: contain;
+    border-radius: 18px;
+    display: block;
+    margin: auto;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+
+/* =========================
+   SHAP
+========================= */
+
+.shap-section {
+    margin-top: 30px;
+    padding: 25px;
+    text-align: center;
+    border-radius: 20px;
+    background: #f0f8f3;
+}
+
+.shap-section h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.shap-image {
+    width: 100%;
+    max-width: 650px;
+    border-radius: 15px;
+    display: block;
+    margin: 20px auto 0;
+}
+
+
+/* =========================
+   AI EXPLANATION
+========================= */
+
+.explanation-section {
+    margin-top: 30px;
+    padding: 30px;
+    border-radius: 20px;
+    background: #f7faf8;
+}
+
+.explanation-section h2 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.explanation-intro {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 16px;
+}
+
+.explanation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.explanation-point {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 18px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.point-number {
+    min-width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #167a42;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
