@@ -4,3 +4,4 @@ shap
 opencv-python-headless
 pillow
 numpy
+matplotlib
