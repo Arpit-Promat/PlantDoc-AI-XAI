@@ -1,8 +1,7 @@
 import os
 import json
 import numpy as np
-import shap
-import cv2
+
 
 from flask import Flask, render_template, request
 from tensorflow.keras.models import load_model
@@ -33,7 +32,15 @@ with open(CLASS_PATH, encoding="utf-8") as f:
 # SHAP EXPLANATION FUNCTION
 # =========================
 
+# =========================
+# SHAP EXPLANATION FUNCTION
+# =========================
+
 def generate_shap(img_arr, predicted_index):
+
+    # SHAP and OpenCV are loaded only when explanation is requested
+    import shap
+    import cv2
 
     print("Generating SHAP explanation...")
     print("Please wait...")
@@ -63,6 +70,64 @@ def generate_shap(img_arr, predicted_index):
     else:
         class_shap = values[0]
 
+    # Create heatmap
+    heatmap = np.abs(class_shap).sum(axis=-1)
+
+    heatmap = heatmap - heatmap.min()
+
+    if heatmap.max() > 0:
+        heatmap = heatmap / heatmap.max()
+
+    # Smooth heatmap
+    heatmap = cv2.GaussianBlur(
+        heatmap.astype(np.float32),
+        (0, 0),
+        sigmaX=8
+    )
+
+    if heatmap.max() > 0:
+        heatmap = heatmap / heatmap.max()
+
+    # Convert heatmap to color
+    heatmap_color = cv2.applyColorMap(
+        np.uint8(255 * heatmap),
+        cv2.COLORMAP_JET
+    )
+
+    heatmap_color = cv2.cvtColor(
+        heatmap_color,
+        cv2.COLOR_BGR2RGB
+    )
+
+    # Original image
+    original = np.uint8(img_arr[0] * 255)
+
+    # Combine original image + SHAP heatmap
+    overlay = cv2.addWeighted(
+        original,
+        0.60,
+        heatmap_color,
+        0.40,
+        0
+    )
+
+    # Save SHAP image
+    shap_path = os.path.join(
+        "static",
+        "shap_output.jpg"
+    )
+
+    cv2.imwrite(
+        shap_path,
+        cv2.cvtColor(
+            overlay,
+            cv2.COLOR_RGB2BGR
+        )
+    )
+
+    print("SHAP explanation saved.")
+
+    return "/static/shap_output.jpg"
     # =========================
     # CREATE HEATMAP
     # =========================
