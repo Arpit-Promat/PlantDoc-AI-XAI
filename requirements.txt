@@ -1,6 +1,6 @@
 streamlit
-tensorflow
-numpy
-Pillow
+tensorflow==2.21.0
 shap
 opencv-python-headless
+pillow
+numpy
