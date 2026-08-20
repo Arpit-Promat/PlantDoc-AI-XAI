@@ -2,13 +2,15 @@ import streamlit as st
 import json
 import numpy as np
 import cv2
+import shap
+
 from PIL import Image
 from tensorflow.keras.models import load_model
 
 
-# =========================================================
+# ============================================================
 # PAGE CONFIG
-# =========================================================
+# ============================================================
 
 st.set_page_config(
     page_title="PlantDoc AI",
@@ -18,32 +20,24 @@ st.set_page_config(
 )
 
 
-# =========================================================
+# ============================================================
 # CUSTOM CSS
-# =========================================================
+# ============================================================
 
 st.markdown(
     """
     <style>
 
-    /* ---------- GLOBAL ---------- */
-
+    /* Main background */
     .stApp {
         background:
-            radial-gradient(circle at 10% 10%, rgba(31, 105, 65, 0.22), transparent 30%),
-            radial-gradient(circle at 90% 20%, rgba(20, 90, 60, 0.18), transparent 30%),
-            linear-gradient(135deg, #06120d 0%, #071713 50%, #04100c 100%);
+            radial-gradient(circle at 10% 10%, rgba(30, 100, 65, 0.20), transparent 30%),
+            radial-gradient(circle at 90% 20%, rgba(20, 80, 70, 0.18), transparent 30%),
+            #07120f;
         color: #f5fff8;
     }
 
-    .block-container {
-        max-width: 1250px;
-        padding-top: 2rem;
-        padding-bottom: 4rem;
-    }
-
-    /* ---------- REMOVE STREAMLIT DEFAULT ---------- */
-
+    /* Hide Streamlit default menu/footer */
     #MainMenu {
         visibility: hidden;
     }
@@ -56,276 +50,199 @@ st.markdown(
         background: transparent !important;
     }
 
-    /* ---------- HERO ---------- */
+    /* Main container */
+    .block-container {
+        max-width: 1250px;
+        padding-top: 2rem;
+        padding-bottom: 4rem;
+    }
 
+    /* Hero */
     .hero {
-        padding: 35px 40px;
+        padding: 34px;
         border-radius: 28px;
-        border: 1px solid rgba(88, 220, 130, 0.25);
         background:
             linear-gradient(
                 135deg,
-                rgba(19, 76, 44, 0.55),
-                rgba(5, 24, 17, 0.85)
+                rgba(19, 67, 44, 0.92),
+                rgba(7, 25, 20, 0.96)
             );
-        box-shadow:
-            0 20px 60px rgba(0, 0, 0, 0.30),
-            inset 0 1px 0 rgba(255,255,255,0.04);
-        margin-bottom: 30px;
+        border: 1px solid rgba(92, 220, 137, 0.25);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.30);
+        margin-bottom: 35px;
     }
 
-    .brand {
-        font-size: 42px;
+    .hero-title {
+        font-size: 44px;
         font-weight: 800;
         letter-spacing: -1px;
-        color: #f5fff7;
         margin-bottom: 8px;
+        color: #f5fff8;
     }
 
-    .brand span {
-        color: #71f29a;
+    .hero-title span {
+        color: #73f59a;
     }
 
-    .tagline {
-        color: #a8c8b3;
-        font-size: 17px;
-        margin-bottom: 20px;
+    .hero-subtitle {
+        font-size: 18px;
+        color: #b7d4c2;
+        margin-bottom: 22px;
     }
 
     .badge-row {
         display: flex;
-        gap: 10px;
         flex-wrap: wrap;
+        gap: 10px;
     }
 
     .badge {
-        display: inline-block;
         padding: 8px 14px;
         border-radius: 999px;
-        background: rgba(76, 190, 110, 0.12);
-        border: 1px solid rgba(94, 220, 130, 0.25);
-        color: #b8ffca;
+        background: rgba(105, 240, 145, 0.09);
+        border: 1px solid rgba(105, 240, 145, 0.22);
+        color: #bafacb;
         font-size: 13px;
         font-weight: 600;
     }
 
-    /* ---------- SECTION TITLES ---------- */
-
+    /* Section headings */
     .section-title {
-        font-size: 27px;
+        font-size: 28px;
         font-weight: 750;
-        margin-top: 28px;
-        margin-bottom: 6px;
-        color: #f2fff5;
+        margin-top: 18px;
+        margin-bottom: 5px;
+        color: #f5fff8;
     }
 
     .section-subtitle {
-        color: #8fb39c;
+        color: #9fc0aa;
         font-size: 15px;
         margin-bottom: 20px;
     }
 
-    /* ---------- CARDS ---------- */
-
+    /* Cards */
     .card {
-        background: rgba(12, 31, 23, 0.78);
-        border: 1px solid rgba(94, 210, 126, 0.18);
+        background: rgba(12, 32, 25, 0.90);
+        border: 1px solid rgba(105, 240, 145, 0.16);
         border-radius: 22px;
         padding: 24px;
-        box-shadow: 0 15px 40px rgba(0,0,0,0.20);
-        height: 100%;
+        box-shadow: 0 14px 40px rgba(0,0,0,0.22);
+        margin-bottom: 20px;
     }
 
     .card-title {
-        font-size: 19px;
+        font-size: 20px;
         font-weight: 700;
-        color: #eaffef;
+        color: #ecfff1;
         margin-bottom: 14px;
     }
 
-    /* ---------- UPLOAD BOX ---------- */
-
-    [data-testid="stFileUploader"] {
-        background: rgba(11, 32, 23, 0.85);
-        border: 1px dashed rgba(103, 231, 139, 0.45);
-        border-radius: 20px;
-        padding: 10px;
-    }
-
-    [data-testid="stFileUploader"] section {
-        background: transparent !important;
-    }
-
-    [data-testid="stFileUploaderDropzone"] {
-        background: rgba(16, 45, 31, 0.50) !important;
-        border-radius: 16px !important;
-    }
-
-    /* ---------- IMAGES ---------- */
-
-    [data-testid="stImage"] {
-        border-radius: 18px;
-        overflow: hidden;
-    }
-
-    /* ---------- PREDICTION ---------- */
-
-    .prediction-main {
-        padding: 28px;
-        border-radius: 22px;
+    /* Diagnosis */
+    .diagnosis-card {
         background:
             linear-gradient(
                 135deg,
-                rgba(22, 91, 51, 0.55),
-                rgba(8, 30, 21, 0.75)
+                rgba(17, 72, 45, 0.90),
+                rgba(10, 31, 24, 0.95)
             );
-        border: 1px solid rgba(104, 235, 137, 0.28);
+        border: 1px solid rgba(100, 240, 140, 0.28);
+        border-radius: 24px;
+        padding: 28px;
+        min-height: 230px;
     }
 
-    .prediction-label {
-        color: #93bba0;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
+    .diagnosis-label {
+        font-size: 12px;
         font-weight: 700;
+        color: #8fd8a6;
+        letter-spacing: 1.5px;
+        margin-bottom: 12px;
     }
 
-    .prediction-name {
-        color: #79f29d;
+    .diagnosis-name {
         font-size: 30px;
         font-weight: 800;
-        margin-top: 8px;
+        color: #ffffff;
         margin-bottom: 14px;
     }
 
     .confidence-number {
         font-size: 42px;
-        font-weight: 800;
-        color: #ffffff;
+        font-weight: 850;
+        color: #75f39c;
     }
 
-    .confidence-caption {
-        color: #91b29d;
+    .confidence-label {
+        color: #9fc0aa;
         font-size: 13px;
+        margin-top: -5px;
     }
 
-    /* ---------- TOP PREDICTION ---------- */
-
-    .top-item {
-        padding: 15px 16px;
-        margin-bottom: 12px;
-        border-radius: 15px;
-        background: rgba(21, 45, 34, 0.72);
-        border: 1px solid rgba(112, 210, 135, 0.13);
+    /* Prediction rows */
+    .prediction-row {
+        padding: 15px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
     }
 
-    .top-name {
-        color: #eaffef;
+    .prediction-row:last-child {
+        border-bottom: none;
+    }
+
+    .prediction-name {
         font-weight: 650;
+        color: #eaffef;
         font-size: 15px;
     }
 
-    .top-percent {
-        color: #7bf19b;
-        font-weight: 750;
-        float: right;
-    }
-
-    .progress-bg {
-        width: 100%;
-        height: 7px;
-        margin-top: 10px;
-        border-radius: 10px;
-        background: #172c22;
-        overflow: hidden;
-    }
-
-    .progress-fill {
-        height: 100%;
-        border-radius: 10px;
-        background: linear-gradient(90deg, #42cf78, #8affaa);
-    }
-
-    /* ---------- XAI ---------- */
-
-    .xai-box {
-        padding: 20px;
-        border-radius: 18px;
-        background: rgba(9, 27, 19, 0.75);
-        border: 1px solid rgba(105, 229, 139, 0.17);
-        margin-bottom: 12px;
-    }
-
-    .xai-number {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background: #1b6840;
-        color: #aaffc0;
+    .prediction-percent {
+        color: #75f39c;
         font-weight: 800;
-        margin-right: 10px;
-    }
-
-    .xai-title {
-        color: #eaffef;
-        font-weight: 700;
         font-size: 16px;
     }
 
-    .xai-text {
-        color: #9bbba6;
+    /* Explanation */
+    .explanation-item {
+        background: rgba(22, 49, 37, 0.70);
+        border: 1px solid rgba(105, 240, 145, 0.12);
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        color: #d8eee0;
         font-size: 14px;
-        line-height: 1.6;
-        margin-top: 8px;
+        line-height: 1.55;
     }
 
-    /* ---------- STATUS ---------- */
-
-    .status-good {
-        padding: 14px 18px;
-        border-radius: 14px;
-        background: rgba(48, 180, 91, 0.12);
-        border: 1px solid rgba(80, 220, 120, 0.25);
-        color: #aaffbd;
-        font-weight: 600;
+    .explanation-number {
+        color: #73f59a;
+        font-weight: 800;
     }
 
-    .status-warning {
-        padding: 14px 18px;
-        border-radius: 14px;
-        background: rgba(210, 150, 45, 0.10);
-        border: 1px solid rgba(230, 170, 60, 0.25);
-        color: #ffe0a0;
-        font-weight: 600;
+    /* Info boxes */
+    .info-box {
+        padding: 16px 18px;
+        border-radius: 15px;
+        background: rgba(16, 52, 36, 0.65);
+        border: 1px solid rgba(100, 230, 140, 0.15);
+        color: #c9e8d2;
+        line-height: 1.5;
+        margin-top: 10px;
     }
 
-    /* ---------- BUTTON ---------- */
-
-    .stButton > button {
-        width: 100%;
-        border-radius: 13px;
-        border: 1px solid rgba(113, 242, 154, 0.30);
-        background: linear-gradient(135deg, #1b7444, #155d38);
-        color: white;
+    /* Image labels */
+    .image-label {
+        font-size: 17px;
         font-weight: 700;
-        min-height: 46px;
+        color: #eaffef;
+        margin-bottom: 10px;
     }
 
-    .stButton > button:hover {
-        border-color: #76f39c;
-        color: white;
-    }
-
-    /* ---------- FOOTER ---------- */
-
+    /* Footer */
     .footer {
         text-align: center;
-        color: #64806e;
+        color: #6f8e79;
         font-size: 13px;
-        padding-top: 45px;
+        padding-top: 30px;
     }
 
     </style>
@@ -334,9 +251,38 @@ st.markdown(
 )
 
 
-# =========================================================
+# ============================================================
+# HEADER
+# ============================================================
+
+st.markdown(
+    """
+    <div class="hero">
+
+        <div class="hero-title">
+            🌿 PlantDoc <span>AI</span>
+        </div>
+
+        <div class="hero-subtitle">
+            AI-Based Plant Disease Detection & Explainable Artificial Intelligence
+        </div>
+
+        <div class="badge-row">
+            <div class="badge">🧠 Deep Learning</div>
+            <div class="badge">🔬 Explainable AI</div>
+            <div class="badge">🌱 Plant Health Analysis</div>
+            <div class="badge">🎯 SHAP Visualization</div>
+        </div>
+
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# ============================================================
 # MODEL LOADING
-# =========================================================
+# ============================================================
 
 @st.cache_resource
 def load_ai_model():
@@ -358,383 +304,206 @@ try:
 
 except Exception as e:
 
-    st.error("❌ Model could not be loaded.")
+    st.error("❌ AI model could not be loaded.")
 
     st.code(str(e))
 
     st.stop()
 
 
-# =========================================================
-# HELPER FUNCTIONS
-# =========================================================
+# ============================================================
+# IMAGE PREPROCESSING
+# ============================================================
+
+IMG_SIZE = 224
+
+
+def preprocess_image(image):
+
+    image_rgb = image.convert("RGB")
+
+    resized = image_rgb.resize(
+        (IMG_SIZE, IMG_SIZE)
+    )
+
+    array = np.array(resized).astype(np.float32)
+
+    array = array / 255.0
+
+    array = np.expand_dims(
+        array,
+        axis=0
+    )
+
+    return array
+
+
+# ============================================================
+# CLEAN CLASS NAME
+# ============================================================
 
 def clean_class_name(name):
 
+    name = str(name)
+
     name = name.replace("___", " → ")
+
     name = name.replace("__", " ")
+
     name = name.replace("_", " ")
 
     return name.strip()
 
 
-def prepare_image(image):
+# ============================================================
+# SHAP HEATMAP
+# ============================================================
 
-    image_rgb = image.convert("RGB")
+@st.cache_data(show_spinner=False)
+def generate_explanation(image_array, predicted_index):
 
-    resized = image_rgb.resize((224, 224))
+    try:
 
-    arr = np.array(resized).astype("float32") / 255.0
+        # Small background sample
+        background = image_array.copy()
 
-    arr = np.expand_dims(arr, axis=0)
-
-    return image_rgb, resized, arr
-
-
-def get_predictions(arr):
-
-    predictions = model.predict(
-        arr,
-        verbose=0
-    )[0]
-
-    # Make sure probabilities are usable
-    predictions = np.asarray(predictions).astype(float)
-
-    # If model output isn't normalized, normalize it
-    total = np.sum(predictions)
-
-    if total > 0:
-        predictions = predictions / total
-
-    top_indices = np.argsort(predictions)[::-1][:3]
-
-    results = []
-
-    for index in top_indices:
-
-        results.append(
-            {
-                "index": int(index),
-                "name": clean_class_name(
-                    class_names[index]
-                ),
-                "confidence": float(
-                    predictions[index] * 100
-                )
-            }
+        masker = shap.maskers.Image(
+            "blur(32,32)",
+            image_array.shape[1:]
         )
 
-    return results
-
-
-def create_attention_map(original_image, predicted_class):
-
-    """
-    Creates a visual disease/attention-area image.
-
-    This is a visual XAI-style highlighting layer.
-    It does not change the model prediction.
-    """
-
-    img = np.array(
-        original_image.convert("RGB")
-    )
-
-    h, w = img.shape[:2]
-
-    resized = cv2.resize(
-        img,
-        (224, 224)
-    )
-
-    # Convert to HSV
-    hsv = cv2.cvtColor(
-        resized,
-        cv2.COLOR_RGB2HSV
-    )
-
-    # Green leaf mask
-    lower_green = np.array(
-        [20, 35, 25],
-        dtype=np.uint8
-    )
-
-    upper_green = np.array(
-        [100, 255, 255],
-        dtype=np.uint8
-    )
-
-    green_mask = cv2.inRange(
-        hsv,
-        lower_green,
-        upper_green
-    )
-
-    # Detect darker / brown / yellow regions
-    gray = cv2.cvtColor(
-        resized,
-        cv2.COLOR_RGB2GRAY
-    )
-
-    dark_regions = cv2.inRange(
-        gray,
-        0,
-        105
-    )
-
-    # Saturated yellow/brown areas
-    lower_problem = np.array(
-        [5, 40, 30],
-        dtype=np.uint8
-    )
-
-    upper_problem = np.array(
-        [45, 255, 240],
-        dtype=np.uint8
-    )
-
-    problem_color = cv2.inRange(
-        hsv,
-        lower_problem,
-        upper_problem
-    )
-
-    # Combine visual regions
-    problem_mask = cv2.bitwise_or(
-        dark_regions,
-        problem_color
-    )
-
-    # Keep mostly inside leaf area
-    problem_mask = cv2.bitwise_and(
-        problem_mask,
-        green_mask
-    )
-
-    # Morphological cleanup
-    kernel = np.ones(
-        (7, 7),
-        np.uint8
-    )
-
-    problem_mask = cv2.morphologyEx(
-        problem_mask,
-        cv2.MORPH_OPEN,
-        kernel
-    )
-
-    problem_mask = cv2.morphologyEx(
-        problem_mask,
-        cv2.MORPH_DILATE,
-        kernel
-    )
-
-    # Blur to create heatmap-like effect
-    heat = cv2.GaussianBlur(
-        problem_mask,
-        (0, 0),
-        15
-    )
-
-    heat = cv2.normalize(
-        heat,
-        None,
-        0,
-        255,
-        cv2.NORM_MINMAX
-    )
-
-    heat = heat.astype(np.uint8)
-
-    # Color heatmap
-    colored = cv2.applyColorMap(
-        heat,
-        cv2.COLORMAP_JET
-    )
-
-    colored = cv2.cvtColor(
-        colored,
-        cv2.COLOR_BGR2RGB
-    )
-
-    # Overlay
-    base = resized.astype(np.float32)
-    overlay = colored.astype(np.float32)
-
-    alpha = (
-        heat.astype(np.float32) / 255.0
-    )[..., None] * 0.65
-
-    result = (
-        base * (1 - alpha)
-        + overlay * alpha
-    )
-
-    result = np.clip(
-        result,
-        0,
-        255
-    ).astype(np.uint8)
-
-    # Highlight strongest areas with contours
-    _, binary = cv2.threshold(
-        heat,
-        80,
-        255,
-        cv2.THRESH_BINARY
-    )
-
-    contours, _ = cv2.findContours(
-        binary,
-        cv2.RETR_EXTERNAL,
-        cv2.CHAIN_APPROX_SIMPLE
-    )
-
-    for contour in contours:
-
-        area = cv2.contourArea(contour)
-
-        if area > 40:
-
-            cv2.drawContours(
-                result,
-                [contour],
-                -1,
-                (255, 255, 255),
-                1
-            )
-
-    return Image.fromarray(result)
-
-
-def explanation_points(
-    disease_name,
-    confidence
-):
-
-    disease_lower = disease_name.lower()
-
-    points = []
-
-    if "healthy" in disease_lower:
-
-        points.append(
-            (
-                "Healthy appearance",
-                "The model classified the leaf as healthy based on visual patterns learned during training."
-            )
+        explainer = shap.Explainer(
+            model,
+            masker,
+            output_names=class_names
         )
 
-        points.append(
-            (
-                "Leaf colour",
-                "The visible green regions are consistent with a healthy-looking leaf."
-            )
+        shap_values = explainer(
+            image_array,
+            max_evals=150,
+            outputs=[predicted_index]
         )
 
-        points.append(
-            (
-                "Disease symptoms",
-                "No strong disease-like visual pattern was identified by the classification model."
+        values = shap_values.values
+
+        # Handle SHAP output dimensions
+        if values.ndim == 5:
+            heat = values[0, :, :, :, 0]
+        elif values.ndim == 4:
+            heat = values[0]
+        else:
+            return None
+
+        # Convert RGB channels into one importance map
+        if heat.ndim == 3:
+            heat = np.mean(
+                np.abs(heat),
+                axis=-1
             )
+
+        heat = np.nan_to_num(
+            heat,
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0
         )
 
-        points.append(
-            (
-                "Surface pattern",
-                "The model considers the overall texture and colour distribution closer to healthy examples."
-            )
+        # Normalize
+        heat = np.abs(heat)
+
+        if np.max(heat) > 0:
+
+            heat = heat / np.max(heat)
+
+        heat = (heat * 255).astype(
+            np.uint8
         )
 
-        points.append(
-            (
-                "Prediction confidence",
-                f"The model's top prediction confidence is {confidence:.2f}%."
-            )
+        # Smooth
+        heat = cv2.GaussianBlur(
+            heat,
+            (0, 0),
+            sigmaX=7
         )
 
-    else:
-
-        points.append(
-            (
-                "Affected visual region",
-                "The highlighted image marks image regions that show stronger visual irregularities."
-            )
+        # Resize
+        heat = cv2.resize(
+            heat,
+            (IMG_SIZE, IMG_SIZE)
         )
 
-        points.append(
-            (
-                "Colour variation",
-                "Changes from normal green leaf colour can contribute to disease classification."
-            )
+        # Threshold to focus on strongest regions
+        threshold = np.percentile(
+            heat,
+            65
         )
 
-        points.append(
-            (
-                "Texture pattern",
-                "Spots, patches and unusual surface texture can provide useful visual signals."
-            )
+        mask = heat >= threshold
+
+        # Create heatmap
+        color_map = cv2.applyColorMap(
+            heat,
+            cv2.COLORMAP_JET
         )
 
-        points.append(
-            (
-                "Leaf structure",
-                "The model also considers the spatial arrangement of visible patterns across the leaf."
-            )
+        color_map = cv2.cvtColor(
+            color_map,
+            cv2.COLOR_BGR2RGB
         )
 
-        points.append(
-            (
-                "Prediction confidence",
-                f"The model's top prediction confidence is {confidence:.2f}%."
-            )
+        original = (
+            image_array[0] * 255
+        ).astype(np.uint8)
+
+        # Keep only important regions
+        highlighted = original.copy()
+
+        highlighted[mask] = (
+            0.45 * original[mask]
+            + 0.55 * color_map[mask]
+        ).astype(np.uint8)
+
+        # Create outline around important regions
+        mask_uint8 = (
+            mask.astype(np.uint8) * 255
         )
 
-    return points
+        contours, _ = cv2.findContours(
+            mask_uint8,
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        cv2.drawContours(
+            highlighted,
+            contours,
+            -1,
+            (255, 255, 255),
+            1
+        )
+
+        return highlighted
+
+    except Exception:
+
+        return None
 
 
-# =========================================================
-# HERO SECTION
-# =========================================================
+# ============================================================
+# UPLOAD SECTION
+# ============================================================
 
 st.markdown(
-    """
-    <div class="hero">
-
-        <div class="brand">
-            🌿 PlantDoc <span>AI</span>
-        </div>
-
-        <div class="tagline">
-            AI-Based Plant Disease Detection & Explainable Artificial Intelligence
-        </div>
-
-        <div class="badge-row">
-            <div class="badge">⚡ Deep Learning</div>
-            <div class="badge">🔬 Explainable AI</div>
-            <div class="badge">🌱 Plant Health</div>
-            <div class="badge">🧠 AI Diagnosis</div>
-        </div>
-
-    </div>
-    """,
+    '<div class="section-title">🔬 Analyze Your Plant Leaf</div>',
     unsafe_allow_html=True
 )
 
-
-# =========================================================
-# UPLOAD SECTION
-# =========================================================
-
 st.markdown(
     """
-    <div class="section-title">
-        🔬 Analyze Your Plant Leaf
-    </div>
-
     <div class="section-subtitle">
-        Upload a clear leaf image and let PlantDoc AI analyze its visual characteristics.
+        Upload a clear leaf image and let PlantDoc AI identify
+        the most likely plant condition and explain the visual regions
+        that influenced the prediction.
     </div>
     """,
     unsafe_allow_html=True
@@ -744,323 +513,26 @@ st.markdown(
 uploaded_file = st.file_uploader(
     "📤 Upload Leaf Image",
     type=["jpg", "jpeg", "png"],
-    help="Upload a clear plant leaf image."
+    help="Upload a clear JPG or PNG leaf image."
 )
 
 
-# =========================================================
-# NO IMAGE
-# =========================================================
+# ============================================================
+# ANALYSIS
+# ============================================================
 
 if uploaded_file is None:
 
-    st.markdown(
-        """
-        <div class="status-good">
-            👆 Upload a leaf image above to start the AI analysis.
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.info(
+        "👆 Upload a leaf image above to start the AI analysis."
     )
 
     st.markdown(
         """
-        <div class="footer">
-            PlantDoc AI • Deep Learning + Explainable AI
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.stop()
-
-
-# =========================================================
-# READ IMAGE
-# =========================================================
-
-try:
-
-    image = Image.open(
-        uploaded_file
-    ).convert("RGB")
-
-except Exception:
-
-    st.error(
-        "❌ Unable to read this image. Please upload JPG or PNG."
-    )
-
-    st.stop()
-
-
-# =========================================================
-# PREPARE IMAGE
-# =========================================================
-
-original_image, resized_image, image_array = prepare_image(
-    image
-)
-
-
-# =========================================================
-# PREDICTION
-# =========================================================
-
-with st.spinner("🧠 PlantDoc AI is analyzing the leaf..."):
-
-    results = get_predictions(
-        image_array
-    )
-
-
-if not results:
-
-    st.error(
-        "❌ Prediction could not be generated."
-    )
-
-    st.stop()
-
-
-best = results[0]
-
-disease_name = best["name"]
-
-confidence = best["confidence"]
-
-
-# =========================================================
-# IMAGE SECTION
-# =========================================================
-
-st.markdown(
-    """
-    <div class="section-title">
-        🖼️ Leaf Analysis
-    </div>
-
-    <div class="section-subtitle">
-        Compare the original leaf with the AI-highlighted visual analysis.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
-attention_image = create_attention_map(
-    original_image,
-    disease_name
-)
-
-
-col1, col2 = st.columns(
-    2,
-    gap="large"
-)
-
-
-with col1:
-
-    st.markdown(
-        """
-        <div class="card">
-            <div class="card-title">
-                🌿 Original Leaf
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.image(
-        original_image,
-        use_container_width=True
-    )
-
-
-with col2:
-
-    st.markdown(
-        """
-        <div class="card">
-            <div class="card-title">
-                🔥 AI Highlighted Areas
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.image(
-        attention_image,
-        use_container_width=True
-    )
-
-    st.caption(
-        "Highlighted regions represent visually prominent areas used for the visual explanation."
-    )
-
-
-# =========================================================
-# DIAGNOSIS
-# =========================================================
-
-st.markdown(
-    """
-    <div class="section-title">
-        🧠 AI Diagnosis
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
-left, right = st.columns(
-    [1.15, 0.85],
-    gap="large"
-)
-
-
-with left:
-
-    st.markdown(
-        f"""
-        <div class="prediction-main">
-
-            <div class="prediction-label">
-                MOST LIKELY CONDITION
-            </div>
-
-            <div class="prediction-name">
-                {disease_name}
-            </div>
-
-            <div class="confidence-number">
-                {confidence:.2f}%
-            </div>
-
-            <div class="confidence-caption">
-                Model confidence score
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-with right:
-
-    st.markdown(
-        """
-        <div class="card">
-
-            <div class="card-title">
-                🏆 Top 3 Predictions
-            </div>
-
-        """,
-        unsafe_allow_html=True
-    )
-
-    for i, item in enumerate(results):
-
-        safe_width = min(
-            max(item["confidence"], 0),
-            100
-        )
-
-        st.markdown(
-            f"""
-            <div class="top-item">
-
-                <span class="top-name">
-                    #{i + 1} &nbsp; {item["name"]}
-                </span>
-
-                <span class="top-percent">
-                    {item["confidence"]:.2f}%
-                </span>
-
-                <div class="progress-bg">
-                    <div
-                        class="progress-fill"
-                        style="width:{safe_width}%;">
-                    </div>
-                </div>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    st.markdown(
-        "</div>",
-        unsafe_allow_html=True
-    )
-
-
-# =========================================================
-# EXPLAINABLE AI
-# =========================================================
-
-st.markdown(
-    """
-    <div class="section-title">
-        🔎 Explainable AI
-    </div>
-
-    <div class="section-subtitle">
-        Why the model may have made this prediction.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
-points = explanation_points(
-    disease_name,
-    confidence
-)
-
-
-for i, (title, text) in enumerate(points):
-
-    st.markdown(
-        f"""
-        <div class="xai-box">
-
-            <div>
-                <span class="xai-number">
-                    {i + 1}
-                </span>
-
-                <span class="xai-title">
-                    {title}
-                </span>
-            </div>
-
-            <div class="xai-text">
-                {text}
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-# =========================================================
-# RESULT STATUS
-# =========================================================
-
-if "healthy" in disease_name.lower():
-
-    st.markdown(
-        """
-        <div class="status-good">
-            🌱 The model's top prediction indicates a healthy leaf.
+        <div class="info-box">
+            💡 <b>Tip:</b> Use a clear image where the leaf is
+            clearly visible. Better image quality generally gives
+            better visual explanations.
         </div>
         """,
         unsafe_allow_html=True
@@ -1068,28 +540,324 @@ if "healthy" in disease_name.lower():
 
 else:
 
+    # Load image
+    image = Image.open(
+        uploaded_file
+    ).convert("RGB")
+
+    # Preprocess
+    input_array = preprocess_image(
+        image
+    )
+
+    # Prediction
+    with st.spinner(
+        "🧠 PlantDoc AI is analyzing the leaf..."
+    ):
+
+        predictions = model.predict(
+            input_array,
+            verbose=0
+        )[0]
+
+    # Convert predictions to probabilities
+    predictions = np.asarray(
+        predictions
+    ).astype(float)
+
+    # Softmax if required
+    if (
+        np.max(predictions) > 1.0
+        or
+        np.sum(predictions) < 0.9
+        or
+        np.sum(predictions) > 1.1
+    ):
+
+        exp_values = np.exp(
+            predictions - np.max(predictions)
+        )
+
+        predictions = (
+            exp_values
+            / np.sum(exp_values)
+        )
+
+    # Top 3
+    top_indices = np.argsort(
+        predictions
+    )[::-1][:3]
+
+    predicted_index = int(
+        top_indices[0]
+    )
+
+    predicted_name = clean_class_name(
+        class_names[predicted_index]
+    )
+
+    confidence = float(
+        predictions[predicted_index] * 100
+    )
+
+
+    # ========================================================
+    # IMAGE SECTION
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">🖼️ Visual Analysis</div>',
+        unsafe_allow_html=True
+    )
+
     st.markdown(
         """
-        <div class="status-warning">
-            ⚠️ The model detected a disease-related visual pattern.
-            Consider consulting an agriculture expert before taking treatment decisions.
+        <div class="section-subtitle">
+            Compare the original leaf with the AI-generated
+            important-region visualization.
         </div>
         """,
         unsafe_allow_html=True
     )
 
 
-# =========================================================
+    # Generate explanation image
+    with st.spinner(
+        "🔎 Generating infected/important area visualization..."
+    ):
+
+        explanation_image = generate_explanation(
+            input_array,
+            predicted_index
+        )
+
+
+    col1, col2 = st.columns(
+        2,
+        gap="large"
+    )
+
+
+    with col1:
+
+        st.markdown(
+            '<div class="image-label">🌿 Original Leaf</div>',
+            unsafe_allow_html=True
+        )
+
+        st.image(
+            image,
+            use_container_width=True
+        )
+
+
+    with col2:
+
+        st.markdown(
+            '<div class="image-label">🔥 AI Important Area Map</div>',
+            unsafe_allow_html=True
+        )
+
+        if explanation_image is not None:
+
+            st.image(
+                explanation_image,
+                use_container_width=True
+            )
+
+            st.caption(
+                "Red/yellow regions represent areas that contributed "
+                "more strongly to the model's visual decision."
+            )
+
+        else:
+
+            st.warning(
+                "⚠️ Visual explanation could not be generated for this image."
+            )
+
+
+    # ========================================================
+    # DIAGNOSIS
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">🧠 AI Diagnosis</div>',
+        unsafe_allow_html=True
+    )
+
+    diagnosis_col, prediction_col = st.columns(
+        [1.15, 0.85],
+        gap="large"
+    )
+
+
+    with diagnosis_col:
+
+        st.markdown(
+            f"""
+            <div class="diagnosis-card">
+
+                <div class="diagnosis-label">
+                    MOST LIKELY CONDITION
+                </div>
+
+                <div class="diagnosis-name">
+                    {predicted_name}
+                </div>
+
+                <div class="confidence-number">
+                    {confidence:.2f}%
+                </div>
+
+                <div class="confidence-label">
+                    Model confidence score
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    with prediction_col:
+
+        st.markdown(
+            """
+            <div class="card">
+                <div class="card-title">
+                    🏆 Top 3 Predictions
+                </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        for rank, idx in enumerate(
+            top_indices,
+            start=1
+        ):
+
+            name = clean_class_name(
+                class_names[int(idx)]
+            )
+
+            score = (
+                float(predictions[int(idx)])
+                * 100
+            )
+
+            st.markdown(
+                f"""
+                <div class="prediction-row">
+
+                    <div class="prediction-name">
+                        #{rank} &nbsp; {name}
+                    </div>
+
+                    <div class="prediction-percent">
+                        {score:.2f}%
+                    </div>
+
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True
+        )
+
+
+    # ========================================================
+    # XAI EXPLANATION
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">🔍 Explainable AI</div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        """
+        <div class="section-subtitle">
+            SHAP highlights the visual regions that were most influential
+            in the AI prediction.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+    # Explanation points
+    explanation_points = [
+
+        f"The AI classified the leaf most strongly as "
+        f"<b>{predicted_name}</b>.",
+
+        "Highlighted red and yellow regions represent "
+        "visually important areas used during the prediction.",
+
+        "The model focuses on visible leaf characteristics "
+        "such as spots, discoloration, texture and damaged regions.",
+
+        "Green or less-highlighted areas contributed relatively "
+        "less to the final visual decision.",
+
+        f"The model's estimated confidence for the top prediction "
+        f"is <b>{confidence:.2f}%</b>.",
+
+        "The highlighted image is an AI explanation map, "
+        "not a medical-style measurement of the exact infected area."
+
+    ]
+
+
+    for i, point in enumerate(
+        explanation_points,
+        start=1
+    ):
+
+        st.markdown(
+            f"""
+            <div class="explanation-item">
+                <span class="explanation-number">
+                    {i}.
+                </span>
+                &nbsp;
+                {point}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    # ========================================================
+    # DISCLAIMER
+    # ========================================================
+
+    st.markdown(
+        """
+        <div class="info-box">
+            ⚠️ <b>Important:</b> PlantDoc AI provides an AI-based
+            visual classification and explanation. The highlighted
+            regions indicate model attention and should not be treated
+            as an exact biological measurement of disease severity.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# ============================================================
 # FOOTER
-# =========================================================
+# ============================================================
 
 st.markdown(
     """
     <div class="footer">
         🌿 PlantDoc AI &nbsp;•&nbsp;
-        Deep Learning &nbsp;•&nbsp;
-        Explainable AI &nbsp;•&nbsp;
-        Plant Health Analysis
+        Deep Learning + Explainable AI
     </div>
     """,
     unsafe_allow_html=True
