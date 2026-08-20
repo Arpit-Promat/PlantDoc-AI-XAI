@@ -2,3 +2,5 @@ streamlit
 tensorflow
 numpy
 Pillow
+shap
+opencv-python-headless
