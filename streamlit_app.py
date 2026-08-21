@@ -715,7 +715,7 @@ with info_col1:
 
         st.image(
             original_image,
-            use_container_width=True
+            width="stretch"
         )
 
 
