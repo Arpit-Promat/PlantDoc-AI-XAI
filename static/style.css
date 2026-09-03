@@ -1,4 +1,7 @@
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     font-family: Arial, sans-serif;
@@ -8,16 +11,30 @@ body {
     align-items: center;
     justify-content: center;
 }
-.container { width: 92%; max-width: 650px; }
+
+.container {
+    width: 92%;
+    max-width: 650px;
+}
+
 .card {
     background: white;
     padding: 38px;
     border-radius: 22px;
-    box-shadow: 0 15px 45px rgba(0,0,0,.12);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, .12);
     text-align: center;
 }
-h1 { color: #176b3a; margin-bottom: 8px; }
-.subtitle { color: #666; margin-bottom: 28px; }
+
+h1 {
+    color: #176b3a;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: #666;
+    margin-bottom: 28px;
+}
+
 input[type=file] {
     width: 100%;
     padding: 15px;
@@ -25,6 +42,7 @@ input[type=file] {
     border-radius: 12px;
     margin-bottom: 18px;
 }
+
 button {
     border: 0;
     padding: 14px 25px;
@@ -34,14 +52,24 @@ button {
     font-size: 16px;
     cursor: pointer;
 }
-button:hover { background: #0f4d29; }
+
+button:hover {
+    background: #0f4d29;
+}
+
 .result {
     margin-top: 28px;
     padding: 22px;
     border-radius: 15px;
     background: #e9f8ee;
 }
-.disease { font-size: 22px; font-weight: bold; color: #176b3a; }
+
+.disease {
+    font-size: 22px;
+    font-weight: bold;
+    color: #176b3a;
+}
+
 .error {
     margin-top: 20px;
     padding: 14px;
@@ -49,6 +77,7 @@ button:hover { background: #0f4d29; }
     color: #a00000;
     border-radius: 10px;
 }
+
 .shap-section {
     margin-top: 30px;
     padding: 25px;
@@ -74,6 +103,7 @@ button:hover { background: #0f4d29; }
     display: block;
     margin: auto;
 }
+
 /* =========================
    ORIGINAL IMAGE
 ========================= */
@@ -103,7 +133,7 @@ button:hover { background: #0f4d29; }
     border-radius: 18px;
     display: block;
     margin: auto;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 
@@ -169,7 +199,7 @@ button:hover { background: #0f4d29; }
     padding: 18px;
     background: white;
     border-radius: 14px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
     font-size: 16px;
     line-height: 1.5;
 }
@@ -184,4 +214,318 @@ button:hover { background: #0f4d29; }
     align-items: center;
     justify-content: center;
     font-weight: bold;
+}
+
+/* =========================
+   SHAP COLOR LEGEND
+   ========================= */
+
+.shap-legend {
+    margin: 30px auto;
+    max-width: 850px;
+    padding: 25px;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.shap-legend h3 {
+    text-align: center;
+    color: #145a32;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    margin: 8px 0;
+    border-radius: 10px;
+    font-size: 16px;
+}
+
+.legend-color {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Highest infection */
+.legend-red {
+    background: #e53935;
+}
+
+/* High */
+.legend-orange {
+    background: #ff9800;
+}
+
+/* Moderate */
+.legend-yellow {
+    background: #fdd835;
+}
+
+/* Low */
+.legend-green {
+    background: #43a047;
+}
+
+/* Very low / neutral */
+.legend-blue {
+    background: #1e88e5;
+}
+
+.legend-text strong {
+    display: block;
+    margin-bottom: 3px;
+}
+
+/* =========================================
+   PROFESSIONAL SHAP COLOUR GUIDE
+   ========================================= */
+
+.shap-legend {
+    max-width: 1100px;
+    margin: 35px auto;
+    padding: 35px;
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 24px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(20, 90, 50, 0.12);
+}
+
+
+/* HEADER */
+
+.shap-legend-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.shap-icon {
+    font-size: 38px;
+}
+
+.shap-legend-header h2 {
+    margin: 0;
+    color: #145a32;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.shap-legend-header p {
+    margin: 6px 0 0;
+    color: #5f6f65;
+    font-size: 16px;
+}
+
+
+/* GRADIENT */
+
+.shap-gradient-container {
+    margin: 25px 0 30px;
+}
+
+.shap-gradient {
+    width: 100%;
+    height: 18px;
+    border-radius: 20px;
+
+    background: linear-gradient(to right,
+            #e53935,
+            #ff9800,
+            #fdd835,
+            #43a047,
+            #1e88e5);
+
+    box-shadow:
+        0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+.gradient-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 9px;
+
+    font-size: 14px;
+    font-weight: 600;
+    color: #52635a;
+}
+
+
+/* LEGEND CARDS */
+
+.legend-card {
+    display: flex;
+    align-items: center;
+
+    gap: 18px;
+
+    padding: 17px 20px;
+    margin: 12px 0;
+
+    border-radius: 15px;
+
+    background: #f8faf9;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.legend-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+
+/* COLOUR DOT */
+
+.legend-dot {
+    width: 24px;
+    height: 24px;
+
+    min-width: 24px;
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+
+/* COLOURS */
+
+.red-dot {
+    background: #e53935;
+}
+
+.orange-dot {
+    background: #ff9800;
+}
+
+.yellow-dot {
+    background: #fdd835;
+}
+
+.green-dot {
+    background: #43a047;
+}
+
+.blue-dot {
+    background: #1e88e5;
+}
+
+
+/* TEXT */
+
+.legend-content h3 {
+    margin: 0 0 5px;
+
+    color: #1c2b23;
+
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.legend-content p {
+    margin: 0;
+
+    color: #5f6f65;
+
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+
+/* LEFT BORDER */
+
+.red-card {
+    border-left: 5px solid #e53935;
+}
+
+.orange-card {
+    border-left: 5px solid #ff9800;
+}
+
+.yellow-card {
+    border-left: 5px solid #fdd835;
+}
+
+.green-card {
+    border-left: 5px solid #43a047;
+}
+
+.blue-card {
+    border-left: 5px solid #1e88e5;
+}
+
+
+/* NOTE */
+
+.shap-note {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 12px;
+
+    margin-top: 25px;
+    padding: 17px 20px;
+
+    border-radius: 14px;
+
+    background: #eef8f1;
+    border: 1px solid #c9e8d2;
+}
+
+.shap-note span {
+    font-size: 20px;
+}
+
+.shap-note p {
+    margin: 0;
+
+    color: #31513d;
+
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+
+/* MOBILE RESPONSIVE */
+
+@media (max-width: 600px) {
+
+    .shap-legend {
+        margin: 20px 12px;
+        padding: 22px;
+    }
+
+    .shap-legend-header h2 {
+        font-size: 24px;
+    }
+
+    .shap-gradient {
+        height: 15px;
+    }
+
+    .legend-card {
+        padding: 14px;
+    }
+
+    .legend-content h3 {
+        font-size: 16px;
+    }
+
+    .legend-content p {
+        font-size: 14px;
+    }
+
 }

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Plant Disease Detection</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f8f5;
+            color: #1f2937;
+            min-height: 100vh;
+        }
+
+        /* =========================
+           HEADER
+        ========================= */
+
+        .header {
+            background: linear-gradient(135deg, #166534, #22c55e);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 34px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+
+        /* =========================
+           MAIN CONTAINER
+        ========================= */
+
+        .container {
+            width: 92%;
+            max-width: 1000px;
+            margin: 35px auto;
+        }
+
+        /* =========================
+           UPLOAD CARD
+        ========================= */
+
+        .upload-card {
+            background: white;
+            padding: 30px;
+            border-radius: 22px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        .upload-card h2 {
+            color: #166534;
+            margin-bottom: 10px;
+        }
+
+        .upload-card p {
+            color: #6b7280;
+            margin-bottom: 25px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            max-width: 500px;
+            padding: 14px;
+            border: 2px dashed #22c55e;
+            border-radius: 12px;
+            background: #f0fdf4;
+            cursor: pointer;
+        }
+
+        .predict-btn {
+            margin-top: 20px;
+            padding: 13px 30px;
+            border: none;
+            border-radius: 12px;
+            background: #16a34a;
+            color: white;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .predict-btn:hover {
+            background: #15803d;
+            transform: translateY(-2px);
+        }
+
+        /* =========================
+           ORIGINAL IMAGE
+        ========================= */
+
+        .original-section {
+            margin-top: 30px;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            border-radius: 22px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.07);
+        }
+
+        .original-section h2 {
+            color: #166534;
+            margin-bottom: 10px;
+        }
+
+        .original-section p {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .original-image {
+            width: 100%;
+            max-width: 500px;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 18px;
+            display: block;
+            margin: auto;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        /* =========================
+           PREDICTION
+        ========================= */
+
+        .result {
+            margin-top: 30px;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            border-radius: 22px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.07);
+        }
+
+        .result h2 {
+            color: #166534;
+            margin-bottom: 15px;
+        }
+
+        .disease {
+            font-size: 23px;
+            font-weight: bold;
+            color: #dc2626;
+            margin-bottom: 12px;
+            word-break: break-word;
+        }
+
+        .confidence {
+            font-size: 18px;
+        }
+
+        /* =========================
+           SHAP
+        ========================= */
+
+        .shap-section {
+            margin-top: 30px;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            border-radius: 22px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.07);
+        }
+
+        .shap-section h2 {
+            color: #166534;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .shap-section p {
+            color: #6b7280;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .shap-image {
+            width: 100%;
+            max-width: 650px;
+            border-radius: 15px;
+            display: block;
+            margin: 20px auto 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        /* =========================
+           AI EXPLANATION
+        ========================= */
+
+        .explanation-section {
+            margin-top: 30px;
+            padding: 30px;
+            background: white;
+            border-radius: 22px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.07);
+        }
+
+        .explanation-section h2 {
+            text-align: center;
+            color: #166534;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .explanation-intro {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .explanation-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .explanation-point {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 18px;
+            background: #f0fdf4;
+            border-left: 5px solid #16a34a;
+            border-radius: 14px;
+            line-height: 1.6;
+        }
+
+        .point-number {
+            min-width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #16a34a;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* =========================
+           ERROR
+        ========================= */
+
+        .error {
+            margin-top: 25px;
+            padding: 18px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        .footer {
+            text-align: center;
+            padding: 30px 15px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 600px) {
+
+            .header h1 {
+                font-size: 26px;
+            }
+
+            .container {
+                width: 95%;
+            }
+
+            .upload-card,
+            .original-section,
+            .result,
+            .shap-section,
+            .explanation-section {
+                padding: 20px;
+            }
+
+            .shap-section h2,
+            .explanation-section h2 {
+                font-size: 23px;
+            }
+
+            .disease {
+                font-size: 19px;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <!-- =========================
+         HEADER
+    ========================= -->
+
+    <div class="header">
+
+        <h1>🌿 Plant Disease Detection</h1>
+
+        <p>
+            AI-powered plant disease detection with Explainable AI
+        </p>
+
+    </div>
+
+
+    <div class="container">
+
+        <!-- =========================
+             UPLOAD
+        ========================= -->
+
+        <div class="upload-card">
+
+            <h2>Upload Leaf Image</h2>
+
+            <p>
+                Upload a clear image of a plant leaf to detect
+                possible diseases.
+            </p>
+
+            <form
+                action="/"
+                method="POST"
+                enctype="multipart/form-data"
+            >
+
+                <input
+                    type="file"
+                    name="image"
+                    accept="image/*"
+                    required
+                >
+
+                <br>
+
+                <button
+                    type="submit"
+                    class="predict-btn"
+                >
+                    🔍 Predict Disease
+                </button>
+
+            </form>
+
+        </div>
+
+
+        <!-- =========================
+             ORIGINAL IMAGE
+        ========================= -->
+
+        {% if original_image %}
+
+        <div class="original-section">
+
+            <h2>🌿 Original Leaf Image</h2>
+
+            <p>
+                Real image uploaded by the user
+            </p>
+
+            <img
+                src="{{ original_image }}"
+                alt="Original Leaf Image"
+                class="original-image"
+            >
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- =========================
+             PREDICTION
+        ========================= -->
+
+        {% if prediction %}
+
+        <div class="result">
+
+            <h2>🤖 AI Prediction</h2>
+
+            <p class="disease">
+                {{ prediction }}
+            </p>
+
+            <p class="confidence">
+                Confidence:
+                <strong>{{ confidence }}%</strong>
+            </p>
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- =========================
+             SHAP EXPLANATION
+        ========================= -->
+
+        {% if shap_image %}
+
+        <div class="shap-section">
+
+            <h2>
+                🧠 Explainable AI using SHAP
+            </h2>
+
+            <p>
+                The highlighted regions show the areas of the
+                leaf that contributed to the model's prediction.
+            </p>
+
+            <img
+                src="{{ shap_image }}"
+                alt="SHAP Explanation"
+                class="shap-image"
+            >
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- =========================
+             AI EXPLANATION
+        ========================= -->
+
+        {% if ai_explanation %}
+
+        <div class="explanation-section">
+
+            <h2>
+                🔍 AI Explanation
+            </h2>
+
+            <p class="explanation-intro">
+
+                These points explain how the AI model arrived
+                at its prediction.
+
+            </p>
+
+
+            <div class="explanation-list">
+
+                {% for point in ai_explanation %}
+
+                <div class="explanation-point">
+
+                    <span class="point-number">
+                        {{ loop.index }}
+                    </span>
+
+                    <span>
+                        {{ point }}
+                    </span>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- =========================
+             ERROR
+        ========================= -->
+
+        {% if error %}
+
+        <div class="error">
+
+            {{ error }}
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =========================
+         FOOTER
+    ========================= -->
+
+    <div class="footer">
+
+        <p>
+            AI Plant Disease Detection •
+            MobileNetV2 • Explainable AI with SHAP
+        </p>
+
+    </div>
+
+</body>
+
+</html>

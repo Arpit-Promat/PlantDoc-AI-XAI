@@ -8,8 +8,8 @@ if len(sys.argv) != 2:
     print("Usage: python predict.py path/to/leaf.jpg")
     raise SystemExit(1)
 
-model = load_model("models/plantdoc_model.keras")
-with open("models/class_names.json", encoding="utf-8") as f:
+model =load_model("PlantDoc-AI-XAI/models/plantdoc_model.keras")
+with open("PlantDoc-AI-XAI/models/class_names.json", encoding="utf-8") as f:
     classes = json.load(f)
 
 img = image.load_img(sys.argv[1], target_size=(224, 224))
