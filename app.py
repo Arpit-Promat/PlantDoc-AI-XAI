@@ -1,7 +1,7 @@
 import os
 import json
+import uuid
 import numpy as np
-
 
 from flask import Flask, render_template, request
 from tensorflow.keras.models import load_model
@@ -10,6 +10,9 @@ from tensorflow.keras.preprocessing import image
 # Phase 1: persistent backend database. This does not alter the frontend/UI.
 from database import configure_database
 
+# Phase 2: backend security. Existing frontend/UI remains unchanged.
+from security import configure_security, validate_uploaded_image
+
 
 # =========================
 # FLASK APP
@@ -17,6 +20,7 @@ from database import configure_database
 
 app = Flask(__name__)
 configure_database(app)
+configure_security(app)
 
 
 # =========================
@@ -45,54 +49,36 @@ with open(MANGO_CLASS_PATH, encoding="utf-8") as f:
     mango_class_names = json.load(f)
 
 # --- Leaf vs Not-Leaf detector (gatekeeper model) ---
-LEAF_DETECTOR_MODEL_PATH = os.path.join(
-    BASE_DIR, "models", "leaf_detector_model.keras"
-)
-LEAF_DETECTOR_CLASSES_PATH = os.path.join(
-    BASE_DIR, "models", "leaf_detector_classes.json"
-)
+LEAF_DETECTOR_MODEL_PATH = os.path.join(BASE_DIR, "models", "leaf_detector_model.keras")
+LEAF_DETECTOR_CLASSES_PATH = os.path.join(BASE_DIR, "models", "leaf_detector_classes.json")
 
 leaf_detector_model = load_model(LEAF_DETECTOR_MODEL_PATH)
 
 with open(LEAF_DETECTOR_CLASSES_PATH, encoding="utf-8") as f:
-    # e.g. {"leaf": 0, "not_leaf": 1}
     leaf_detector_class_indices = json.load(f)
 
-# Figure out which sigmoid output value (0 or 1) corresponds to "leaf"
 LEAF_INDEX = leaf_detector_class_indices.get("leaf", 0)
-
-# Minimum probability required to trust that an image is a leaf.
 LEAF_DETECTOR_THRESHOLD = 0.5
-
 
 # Minimum confidence (%) required to trust a disease prediction.
 CONFIDENCE_THRESHOLD = 60.0
 
-# Minimum gap (%) required between the top-1 and top-2 predicted
-# classes for the disease model.
+# Minimum gap (%) required between the top-1 and top-2 predicted classes.
 MARGIN_THRESHOLD = 20.0
+
+ALLOWED_PLANT_TYPES = {"general", "mango"}
 
 
 def get_model_and_classes(plant_type):
-    """
-    Returns (model, class_names) based on the plant_type
-    selected in the upload form.
-    """
+    """Return the model/classes for an allowed plant type."""
     if plant_type == "mango":
         return mango_model, mango_class_names
-    # default / "general" falls back to the original PlantDoc model
     return general_model, general_class_names
 
 
 def is_leaf_image(input_image_array):
-    """
-    Runs the leaf-detector model on the preprocessed image array.
-    Returns True if the image is predicted to be a leaf, else False.
-    """
-    pred = leaf_detector_model.predict(
-        input_image_array,
-        verbose=0
-    )[0][0]
+    """Return (is_leaf, leaf_probability)."""
+    pred = leaf_detector_model.predict(input_image_array, verbose=0)[0][0]
 
     if LEAF_INDEX == 0:
         leaf_probability = 1.0 - float(pred)
@@ -100,15 +86,11 @@ def is_leaf_image(input_image_array):
         leaf_probability = float(pred)
 
     print(f"Leaf detector probability (leaf): {leaf_probability * 100:.2f}%")
-
-    return leaf_probability >= LEAF_DETECTOR_THRESHOLD
+    return leaf_probability >= LEAF_DETECTOR_THRESHOLD, leaf_probability
 
 
 def get_confidence_level(confidence_value):
-    """
-    Returns (level, label) based on the confidence percentage.
-    Used to show a colored badge in the UI.
-    """
+    """Return the existing UI confidence badge values."""
     if confidence_value >= 85:
         return "high", "High Confidence"
     elif confidence_value >= 70:
@@ -117,35 +99,16 @@ def get_confidence_level(confidence_value):
         return "low", "Low Confidence"
 
 
-# =========================
-# SHAP EXPLANATION FUNCTION
-# =========================
-
 def generate_shap(model, class_names, img_arr, predicted_index):
-
     import shap
     import cv2
 
     print("Generating SHAP explanation...")
     print("Please wait...")
 
-    masker = shap.maskers.Image(
-        "blur(32,32)",
-        img_arr[0].shape
-    )
-
-    explainer = shap.Explainer(
-        model,
-        masker,
-        output_names=class_names
-    )
-
-    shap_values = explainer(
-        img_arr,
-        max_evals=30,
-        batch_size=1
-    )
-
+    masker = shap.maskers.Image("blur(32,32)", img_arr[0].shape)
+    explainer = shap.Explainer(model, masker, output_names=class_names)
+    shap_values = explainer(img_arr, max_evals=30, batch_size=1)
     values = shap_values.values
 
     if values.ndim == 5:
@@ -159,51 +122,22 @@ def generate_shap(model, class_names, img_arr, predicted_index):
     if heatmap.max() > 0:
         heatmap = heatmap / heatmap.max()
 
-    heatmap = cv2.GaussianBlur(
-        heatmap.astype(np.float32),
-        (0, 0),
-        sigmaX=8
-    )
+    heatmap = cv2.GaussianBlur(heatmap.astype(np.float32), (0, 0), sigmaX=8)
 
     if heatmap.max() > 0:
         heatmap = heatmap / heatmap.max()
 
-    heatmap_color = cv2.applyColorMap(
-        np.uint8(255 * heatmap),
-        cv2.COLORMAP_JET
-    )
-
-    heatmap_color = cv2.cvtColor(
-        heatmap_color,
-        cv2.COLOR_BGR2RGB
-    )
-
+    heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+    heatmap_color = cv2.cvtColor(heatmap_color, cv2.COLOR_BGR2RGB)
     original = np.uint8(img_arr[0] * 255)
 
-    overlay = cv2.addWeighted(
-        original,
-        0.60,
-        heatmap_color,
-        0.40,
-        0
-    )
+    overlay = cv2.addWeighted(original, 0.60, heatmap_color, 0.40, 0)
 
     os.makedirs(os.path.join(BASE_DIR, "static"), exist_ok=True)
+    shap_path = os.path.join(BASE_DIR, "static", "shap_output.jpg")
 
-    shap_path = os.path.join(
-        BASE_DIR, "static", "shap_output.jpg"
-    )
-
-    cv2.imwrite(
-        shap_path,
-        cv2.cvtColor(
-            overlay,
-            cv2.COLOR_RGB2BGR
-        )
-    )
-
+    cv2.imwrite(shap_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
     print("SHAP explanation saved.")
-
     return "/static/shap_output.jpg"
 
 
@@ -213,7 +147,6 @@ def generate_shap(model, class_names, img_arr, predicted_index):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-
     prediction = None
     confidence = None
     confidence_level = None
@@ -224,107 +157,64 @@ def index():
     ai_explanation = []
     selected_plant_type = "general"
 
-
     if request.method == "POST":
+        selected_plant_type = request.form.get("plant_type", "general").strip().lower()
 
-        selected_plant_type = request.form.get("plant_type", "general")
-
-        if "image" not in request.files:
-
+        if selected_plant_type not in ALLOWED_PLANT_TYPES:
+            error = "Invalid plant type selected."
+        elif "image" not in request.files:
             error = "Please select an image."
-
         else:
-
             file = request.files["image"]
 
-            if file.filename == "":
-
-                error = "Please select an image."
-
+            valid_image, validation_result = validate_uploaded_image(file)
+            if not valid_image:
+                error = validation_result
             else:
-
                 try:
+                    model, class_names = get_model_and_classes(selected_plant_type)
 
-                    model, class_names = get_model_and_classes(
-                        selected_plant_type
-                    )
+                    upload_folder = os.path.join(BASE_DIR, "static", "uploads")
+                    os.makedirs(upload_folder, exist_ok=True)
 
-                    upload_folder = os.path.join(
-                        BASE_DIR, "static", "uploads"
-                    )
-
-                    os.makedirs(
-                        upload_folder,
-                        exist_ok=True
-                    )
-
-                    original_path = os.path.join(
-                        upload_folder,
-                        "original_leaf.jpg"
-                    )
+                    # Never trust the user-provided filename and never reuse one fixed name.
+                    safe_name = validation_result
+                    extension = safe_name.rsplit(".", 1)[-1].lower()
+                    unique_name = f"{uuid.uuid4().hex}.{extension}"
+                    original_path = os.path.join(upload_folder, unique_name)
 
                     file.seek(0)
-
                     file.save(original_path)
 
-                    img = image.load_img(
-                        original_path,
-                        target_size=(224, 224)
-                    )
-
-                    arr = (
-                        image.img_to_array(img)
-                        / 255.0
-                    )
-
-                    input_image = np.expand_dims(
-                        arr,
-                        axis=0
-                    )
+                    img = image.load_img(original_path, target_size=(224, 224))
+                    arr = image.img_to_array(img) / 255.0
+                    input_image = np.expand_dims(arr, axis=0)
 
                     # =========================
                     # STAGE 1: LEAF DETECTOR GATEKEEPER
                     # =========================
+                    is_leaf, leaf_probability = is_leaf_image(input_image)
 
-                    if not is_leaf_image(input_image):
-
+                    if not is_leaf:
                         print("Rejected by leaf detector — not a leaf image.")
-
                         error = (
                             "This doesn't look like a leaf. "
-                            "Please upload a clear photo of a "
-                            "plant leaf."
+                            "Please upload a clear photo of a plant leaf."
                         )
-
                     else:
-
-                        original_image = (
-                            "/static/uploads/original_leaf.jpg"
-                        )
+                        original_image = f"/static/uploads/{unique_name}"
 
                         # =========================
                         # STAGE 2: DISEASE MODEL PREDICTION
                         # =========================
+                        pred = model.predict(input_image, verbose=0)[0]
 
-                        pred = model.predict(
-                            input_image,
-                            verbose=0
-                        )[0]
+                        if len(pred) < 2:
+                            raise ValueError("Invalid model output")
 
-                        idx = int(
-                            np.argmax(pred)
-                        )
-
-                        prediction = (
-                            class_names[idx]
-                            if idx < len(class_names)
-                            else f"Class {idx}"
-                        )
-
-                        confidence = round(
-                            float(pred[idx]) * 100,
-                            2
-                        )
+                        idx = int(np.argmax(pred))
+                        prediction = class_names[idx] if idx < len(class_names) else f"Class {idx}"
+                        confidence = round(float(pred[idx]) * 100, 2)
 
                         sorted_pred = np.sort(pred)[::-1]
                         top1_prob = float(sorted_pred[0]) * 100
@@ -336,72 +226,32 @@ def index():
                         print(f"Confidence: {confidence}%")
                         print(f"Margin (top1 - top2): {margin}%")
 
-                        if (
-                            confidence < CONFIDENCE_THRESHOLD
-                            or margin < MARGIN_THRESHOLD
-                        ):
-
-                            print(
-                                "Rejected — confidence or margin "
-                                "below threshold."
-                            )
-
+                        if confidence < CONFIDENCE_THRESHOLD or margin < MARGIN_THRESHOLD:
+                            print("Rejected — confidence or margin below threshold.")
                             error = (
-                                "The image is unclear, or the "
-                                "disease could not be identified "
-                                "confidently. Please upload a "
-                                "clearer photo of the leaf."
+                                "The image is unclear, or the disease could not be identified "
+                                "confidently. Please upload a clearer photo of the leaf."
                             )
-
                             prediction = None
                             confidence = None
                             original_image = None
-
                         else:
-
-                            # =========================
-                            # CONFIDENCE LEVEL LABEL (for UI badge)
-                            # =========================
-
-                            confidence_level, confidence_label = (
-                                get_confidence_level(confidence)
-                            )
+                            confidence_level, confidence_label = get_confidence_level(confidence)
 
                             ai_explanation = [
-
-                                f"The model predicted "
-                                f"{prediction} as the most likely class.",
-
-                                f"The model assigned a confidence "
-                                f"score of {confidence}%, indicating "
-                                f"strong classification confidence.",
-
-                                "SHAP highlights the image regions "
-                                "that contributed most to the model's "
-                                "prediction.",
-
-                                "The highlighted regions help identify "
-                                "which visible leaf features influenced "
-                                "the classification.",
-
-                                "This explanation improves model "
-                                "transparency by showing why the AI "
-                                "reached its prediction instead of "
-                                "only giving the final disease name."
+                                f"The model predicted {prediction} as the most likely class.",
+                                f"The model assigned a confidence score of {confidence}%, indicating strong classification confidence.",
+                                "SHAP highlights the image regions that contributed most to the model's prediction.",
+                                "The highlighted regions help identify which visible leaf features influenced the classification.",
+                                "This explanation improves model transparency by showing why the AI reached its prediction instead of only giving the final disease name.",
                             ]
 
-                            shap_image = generate_shap(
-                                model,
-                                class_names,
-                                input_image,
-                                idx
-                            )
+                            shap_image = generate_shap(model, class_names, input_image, idx)
 
                 except Exception as exc:
-
-                    error = (
-                        f"Prediction error: {exc}"
-                    )
+                    # Do not expose internal paths/model/database errors to users.
+                    print(f"Prediction error: {exc}")
+                    error = "Unable to process the image right now. Please try again with a valid leaf image."
 
     return render_template(
         "index.html",
@@ -413,9 +263,14 @@ def index():
         shap_image=shap_image,
         original_image=original_image,
         ai_explanation=ai_explanation,
-        selected_plant_type=selected_plant_type
+        selected_plant_type=selected_plant_type,
     )
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=False)
+    app.run(
+        debug=os.getenv("FLASK_DEBUG", "0") == "1",
+        host=os.getenv("FLASK_HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "5000")),
+        use_reloader=False,
+    )
