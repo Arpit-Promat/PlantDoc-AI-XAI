@@ -9,6 +9,8 @@ from functools import wraps
 
 import jwt
 from flask import current_app, jsonify, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -19,12 +21,14 @@ ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MiB
 
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
 
 def configure_security(app):
     """Configure security defaults and register backend authentication routes."""
     secret_key = os.getenv("SECRET_KEY")
-    if not secret_key:
-        secret_key = "dev-only-change-this-secret-key"
+    if not secret_key or len(secret_key) < 32:
+        secret_key = "dev-only-change-this-secret-key-use-a-long-random-value"
     app.config["SECRET_KEY"] = secret_key
     app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", MAX_IMAGE_SIZE))
     app.config["MAX_FORM_MEMORY_SIZE"] = int(os.getenv("MAX_FORM_MEMORY_SIZE", 500_000))
@@ -35,6 +39,9 @@ def configure_security(app):
     trusted_hosts = os.getenv("TRUSTED_HOSTS", "").strip()
     if trusted_hosts:
         app.config["TRUSTED_HOSTS"] = [h.strip() for h in trusted_hosts.split(",") if h.strip()]
+
+    app.config["RATELIMIT_STORAGE_URI"] = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
+    limiter.init_app(app)
 
     @app.after_request
     def add_security_headers(response):
@@ -54,7 +61,12 @@ def configure_security(app):
     def request_too_large(_error):
         return jsonify({"error": "Uploaded request is too large"}), 413
 
+    @app.errorhandler(429)
+    def too_many_requests(_error):
+        return jsonify({"error": "Too many requests. Please try again later."}), 429
+
     @app.post("/api/auth/register")
+    @limiter.limit("5 per minute")
     def register():
         data = request.get_json(silent=True) or {}
         name = str(data.get("name", "")).strip()
@@ -76,6 +88,7 @@ def configure_security(app):
         return jsonify({"id": user.id, "name": user.name, "email": user.email}), 201
 
     @app.post("/api/auth/login")
+    @limiter.limit("5 per minute")
     def login():
         data = request.get_json(silent=True) or {}
         email = str(data.get("email", "")).strip().lower()
