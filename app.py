@@ -11,11 +11,7 @@ from database import configure_database
 from security import configure_security, limiter, validate_uploaded_image
 from management_api import register_management_routes
 from model_registry import get_model_spec
-from prediction_engine import (
-    CONFIDENCE_THRESHOLD,
-    MARGIN_THRESHOLD,
-    assess_prediction,
-)
+from prediction_engine import assess_prediction
 
 
 app = Flask(__name__)
@@ -127,6 +123,7 @@ def index():
     shap_image = None
     original_image = None
     ai_explanation = []
+    top_predictions = []
     selected_plant_type = "general"
 
     if request.method == "POST":
@@ -172,6 +169,7 @@ def index():
                         prediction = result["prediction"]
                         confidence = result["confidence"]
                         margin = result["margin"]
+                        top_predictions = result["top_predictions"]
 
                         print(f"Plant type: {selected_plant_type}")
                         print(f"Model: {result['model_version']}")
@@ -211,6 +209,7 @@ def index():
         shap_image=shap_image,
         original_image=original_image,
         ai_explanation=ai_explanation,
+        top_predictions=top_predictions,
         selected_plant_type=selected_plant_type,
     )
 
