@@ -9,3 +9,5 @@ flask
 flask-sqlalchemy
 sqlalchemy
 python-dotenv
+PyJWT
+Flask-Limiter
