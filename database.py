@@ -1,12 +1,8 @@
-"""Persistent database layer for ATHARVADRISHTI.
-
-SQLite is the zero-configuration default. Set DATABASE_URL to PostgreSQL
-(or another SQLAlchemy-supported database) for deployment.
-The existing frontend/UI is intentionally not modified by this module.
-"""
+"""Persistent database and scan APIs for ATHARVADRISHTI."""
 
 import json
 import os
+import uuid
 from datetime import datetime, timezone
 
 from flask import jsonify, request
@@ -23,8 +19,7 @@ class User(db.Model):
     name = db.Column(db.String(120), nullable=True)
     email = db.Column(db.String(255), unique=True, nullable=True, index=True)
     password_hash = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
-                           default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     farms = db.relationship("Farm", back_populates="user", cascade="all, delete-orphan")
     scans = db.relationship("Scan", back_populates="user", cascade="all, delete-orphan")
 
@@ -35,8 +30,7 @@ class Farm(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     farm_name = db.Column(db.String(160), nullable=False)
     location = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
-                           default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     user = db.relationship("User", back_populates="farms")
     crops = db.relationship("Crop", back_populates="farm", cascade="all, delete-orphan")
     scans = db.relationship("Scan", back_populates="farm")
@@ -47,8 +41,7 @@ class Crop(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     farm_id = db.Column(db.Integer, db.ForeignKey("farms.id"), nullable=True, index=True)
     crop_name = db.Column(db.String(120), nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
-                           default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     farm = db.relationship("Farm", back_populates="crops")
     scans = db.relationship("Scan", back_populates="crop")
 
@@ -67,11 +60,10 @@ class Scan(db.Model):
     confidence = db.Column(db.Float, nullable=True)
     prediction_margin = db.Column(db.Float, nullable=True)
     leaf_probability = db.Column(db.Float, nullable=True)
-    prediction_status = db.Column(db.String(40), nullable=False, default="pending")
+    prediction_status = db.Column(db.String(40), nullable=False, default="pending", index=True)
     error_message = db.Column(db.Text, nullable=True)
     top_predictions = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
-                           default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
     completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     user = db.relationship("User", back_populates="scans")
     farm = db.relationship("Farm", back_populates="scans")
@@ -104,7 +96,7 @@ class Scan(db.Model):
 
 
 def _record_scan_from_request(sender, template, context, **extra):
-    """Persist UI predictions without changing the existing template contract."""
+    """Persist the existing synchronous UI flow without changing its template."""
     if request.method != "POST" or template.name != "index.html":
         return
     if not context.get("prediction") and not context.get("error"):
@@ -143,17 +135,18 @@ def _register_api_routes(app):
         except Exception:
             return jsonify({"status": "error", "database": "unavailable"}), 503
 
+    @app.get("/api/readiness")
+    def readiness():
+        try:
+            db.session.execute(text("SELECT 1"))
+            return jsonify({"status": "ready", "database": "connected"})
+        except Exception:
+            return jsonify({"status": "not_ready", "database": "unavailable"}), 503
+
     @app.get("/api/scans")
     def scan_history():
-        limit = request.args.get("limit", default=20, type=int)
-        limit = max(1, min(limit, 100))
-        user_id = request.current_user.id
-        scans = (
-            Scan.query.filter_by(user_id=user_id)
-            .order_by(Scan.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        limit = max(1, min(request.args.get("limit", default=20, type=int), 100))
+        scans = Scan.query.filter_by(user_id=request.current_user.id).order_by(Scan.created_at.desc()).limit(limit).all()
         return jsonify({"count": len(scans), "scans": [scan.to_dict() for scan in scans]})
 
     @app.get("/api/scans/<int:scan_id>")
@@ -163,22 +156,83 @@ def _register_api_routes(app):
             return jsonify({"error": "Scan not found"}), 404
         return jsonify(scan.to_dict())
 
+    @app.post("/api/scans/async")
+    def create_async_scan():
+        """Create a scan job for Celery workers; the current UI does not use this route."""
+        from security import validate_uploaded_image
+
+        plant_type = request.form.get("plant_type", "general").strip().lower()
+        if plant_type not in {"general", "mango"}:
+            return jsonify({"error": "Invalid plant type selected"}), 400
+
+        valid, result = validate_uploaded_image(request.files.get("image"))
+        if not valid:
+            return jsonify({"error": result}), 400
+
+        upload_folder = os.path.join(app.root_path, "static", "uploads")
+        os.makedirs(upload_folder, exist_ok=True)
+        extension = result.rsplit(".", 1)[-1].lower()
+        unique_name = f"{uuid.uuid4().hex}.{extension}"
+        file_path = os.path.join(upload_folder, unique_name)
+        request.files["image"].seek(0)
+        request.files["image"].save(file_path)
+
+        scan = Scan(
+            user_id=request.current_user.id,
+            original_filename=result,
+            image_path=f"/static/uploads/{unique_name}",
+            plant_type=plant_type,
+            prediction_status="queued",
+        )
+        db.session.add(scan)
+        db.session.commit()
+
+        try:
+            from tasks import predict_scan
+            task = predict_scan.delay(scan.id)
+        except Exception:
+            scan.prediction_status = "failed"
+            scan.error_message = "Background queue is unavailable."
+            db.session.commit()
+            return jsonify({"error": "Background processing is unavailable", "scan_id": scan.id}), 503
+
+        return jsonify({"scan_id": scan.id, "task_id": task.id, "status": "queued"}), 202
+
+    @app.get("/api/scans/<int:scan_id>/status")
+    def scan_status(scan_id):
+        scan = Scan.query.filter_by(id=scan_id, user_id=request.current_user.id).first()
+        if scan is None:
+            return jsonify({"error": "Scan not found"}), 404
+        return jsonify({"scan_id": scan.id, "status": scan.prediction_status, "prediction": scan.prediction, "confidence": scan.confidence})
+
 
 def configure_database(app):
-    """Configure SQLAlchemy and initialize the Phase 1 backend."""
+    """Configure SQLAlchemy for SQLite locally and pooled PostgreSQL in production."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     default_sqlite = os.path.join(base_dir, "instance", "atharvadrishti.db")
     os.makedirs(os.path.dirname(default_sqlite), exist_ok=True)
     database_url = os.getenv("DATABASE_URL", f"sqlite:///{default_sqlite}")
     if database_url.startswith("postgres://"):
         database_url = "postgresql://" + database_url[len("postgres://"):]
+
     app.config.setdefault("SQLALCHEMY_DATABASE_URI", database_url)
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
+
     if database_url.startswith("sqlite"):
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
             **app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}),
             "connect_args": {"check_same_thread": False},
         }
+    else:
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+            **app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}),
+            "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
+            "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "20")),
+            "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
+            "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
+            "pool_pre_ping": True,
+        }
+
     db.init_app(app)
     _register_api_routes(app)
     try:
