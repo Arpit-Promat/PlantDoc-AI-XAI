@@ -5,3 +5,7 @@ opencv-python-headless
 pillow
 numpy
 matplotlib
+flask
+flask-sqlalchemy
+sqlalchemy
+python-dotenv
