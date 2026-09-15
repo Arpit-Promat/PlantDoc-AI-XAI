@@ -23,7 +23,7 @@ class Phase10IntelligenceTests(unittest.TestCase):
         result = build_scan_intelligence("Tomato___Late_blight", 61.0, 8.0, "rejected", "hi")
         self.assertEqual(result["attention_priority"], "high")
         self.assertEqual(result["language"], "hi")
-        self.assertIn("Hindi", result["product_note"] if False else "Hindi")
+        self.assertIn("इस result", result["product_note"])
 
     def test_crop_intelligence_detects_repeated_disease_pattern(self):
         scans = [
