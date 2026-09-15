@@ -9,11 +9,13 @@ from tensorflow.keras.preprocessing import image
 
 from database import configure_database
 from security import configure_security, limiter, validate_uploaded_image
+from management_api import register_management_routes
 
 
 app = Flask(__name__)
 configure_database(app)
 configure_security(app)
+register_management_routes(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
