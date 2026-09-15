@@ -10,7 +10,7 @@ from tensorflow.keras.preprocessing import image
 from database import configure_database
 from security import configure_security, limiter, validate_uploaded_image
 from management_api import register_management_routes
-from model_registry import model_identifier, get_model_spec
+from model_registry import get_model_spec
 from prediction_engine import (
     CONFIDENCE_THRESHOLD,
     MARGIN_THRESHOLD,
@@ -72,8 +72,11 @@ def is_leaf_image(input_image_array):
 
 
 def get_confidence_level(confidence_value):
-    result = assess_prediction([confidence_value / 100.0, 1.0 - confidence_value / 100.0], ["positive", "negative"], "general")
-    return result["confidence_level"], result["confidence_label"]
+    if confidence_value >= 85:
+        return "high", "High Confidence"
+    if confidence_value >= 70:
+        return "moderate", "Moderate Confidence"
+    return "low", "Low Confidence"
 
 
 def generate_shap(model, class_names, img_arr, predicted_index):
@@ -157,7 +160,7 @@ def index():
                     arr = image.img_to_array(img) / 255.0
                     input_image = np.expand_dims(arr, axis=0)
 
-                    is_leaf, leaf_probability = is_leaf_image(input_image)
+                    is_leaf, _leaf_probability = is_leaf_image(input_image)
                     if not is_leaf:
                         print("Rejected by leaf detector — not a leaf image.")
                         error = "This doesn't look like a leaf. Please upload a clear photo of a plant leaf."
