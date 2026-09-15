@@ -13,6 +13,8 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       WEB_CONCURRENCY: "2"
+    volumes:
+      - media_data:/app/static/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -29,6 +31,8 @@ services:
       DATABASE_URL: postgresql+psycopg://atharvadrishti:atharvadrishti@db:5432/atharvadrishti
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - media_data:/app/static/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -62,5 +66,6 @@ services:
       retries: 10
 
 volumes:
+  media_data:
   redis_data:
   postgres_data:
