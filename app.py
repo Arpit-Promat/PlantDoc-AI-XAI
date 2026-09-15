@@ -57,6 +57,12 @@ LEAF_DETECTOR_THRESHOLD = 0.5
 ALLOWED_PLANT_TYPES = {"general", "mango"}
 
 
+@app.get("/landing")
+def landing():
+    """Product landing page; the existing scanner UI remains available at /."""
+    return render_template("landing.html")
+
+
 @app.get("/api/system/health")
 def system_health():
     """Expose safe runtime/model health information for deployment diagnostics."""
