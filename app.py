@@ -10,6 +10,12 @@ from tensorflow.keras.preprocessing import image
 from database import configure_database
 from security import configure_security, limiter, validate_uploaded_image
 from management_api import register_management_routes
+from model_registry import model_identifier, get_model_spec
+from prediction_engine import (
+    CONFIDENCE_THRESHOLD,
+    MARGIN_THRESHOLD,
+    assess_prediction,
+)
 
 
 app = Flask(__name__)
@@ -19,28 +25,29 @@ register_management_routes(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-GENERAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "plantdoc_model.keras")
-GENERAL_CLASS_PATH = os.path.join(BASE_DIR, "models", "class_names.json")
-general_model = load_model(GENERAL_MODEL_PATH)
+GENERAL_SPEC = get_model_spec("general")
+GENERAL_MODEL_PATH = os.path.join(BASE_DIR, GENERAL_SPEC.model_path)
+GENERAL_CLASS_PATH = os.path.join(BASE_DIR, GENERAL_SPEC.class_names_path)
+general_model = load_model(GENERAL_MODEL_PATH, compile=False)
 with open(GENERAL_CLASS_PATH, encoding="utf-8") as f:
     general_class_names = json.load(f)
 
-MANGO_MODEL_PATH = os.path.join(BASE_DIR, "models", "mango_model.keras")
-MANGO_CLASS_PATH = os.path.join(BASE_DIR, "models", "mango_class_names.json")
-mango_model = load_model(MANGO_MODEL_PATH)
+MANGO_SPEC = get_model_spec("mango")
+MANGO_MODEL_PATH = os.path.join(BASE_DIR, MANGO_SPEC.model_path)
+MANGO_CLASS_PATH = os.path.join(BASE_DIR, MANGO_SPEC.class_names_path)
+mango_model = load_model(MANGO_MODEL_PATH, compile=False)
 with open(MANGO_CLASS_PATH, encoding="utf-8") as f:
     mango_class_names = json.load(f)
 
-LEAF_DETECTOR_MODEL_PATH = os.path.join(BASE_DIR, "models", "leaf_detector_model.keras")
-LEAF_DETECTOR_CLASSES_PATH = os.path.join(BASE_DIR, "models", "leaf_detector_classes.json")
-leaf_detector_model = load_model(LEAF_DETECTOR_MODEL_PATH)
+LEAF_SPEC = get_model_spec("leaf_detector")
+LEAF_DETECTOR_MODEL_PATH = os.path.join(BASE_DIR, LEAF_SPEC.model_path)
+LEAF_DETECTOR_CLASSES_PATH = os.path.join(BASE_DIR, LEAF_SPEC.class_names_path)
+leaf_detector_model = load_model(LEAF_DETECTOR_MODEL_PATH, compile=False)
 with open(LEAF_DETECTOR_CLASSES_PATH, encoding="utf-8") as f:
     leaf_detector_class_indices = json.load(f)
 
 LEAF_INDEX = leaf_detector_class_indices.get("leaf", 0)
 LEAF_DETECTOR_THRESHOLD = 0.5
-CONFIDENCE_THRESHOLD = 60.0
-MARGIN_THRESHOLD = 20.0
 ALLOWED_PLANT_TYPES = {"general", "mango"}
 
 
@@ -48,6 +55,10 @@ def get_model_and_classes(plant_type):
     if plant_type == "mango":
         return mango_model, mango_class_names
     return general_model, general_class_names
+
+
+def get_model_key(plant_type):
+    return "mango" if plant_type == "mango" else "general"
 
 
 def is_leaf_image(input_image_array):
@@ -61,11 +72,8 @@ def is_leaf_image(input_image_array):
 
 
 def get_confidence_level(confidence_value):
-    if confidence_value >= 85:
-        return "high", "High Confidence"
-    elif confidence_value >= 70:
-        return "moderate", "Moderate Confidence"
-    return "low", "Low Confidence"
+    result = assess_prediction([confidence_value / 100.0, 1.0 - confidence_value / 100.0], ["positive", "negative"], "general")
+    return result["confidence_level"], result["confidence_label"]
 
 
 def generate_shap(model, class_names, img_arr, predicted_index):
@@ -134,6 +142,7 @@ def index():
             else:
                 try:
                     model, class_names = get_model_and_classes(selected_plant_type)
+                    model_key = get_model_key(selected_plant_type)
                     upload_folder = os.path.join(BASE_DIR, "static", "uploads")
                     os.makedirs(upload_folder, exist_ok=True)
 
@@ -148,38 +157,34 @@ def index():
                     arr = image.img_to_array(img) / 255.0
                     input_image = np.expand_dims(arr, axis=0)
 
-                    is_leaf, _leaf_probability = is_leaf_image(input_image)
+                    is_leaf, leaf_probability = is_leaf_image(input_image)
                     if not is_leaf:
                         print("Rejected by leaf detector — not a leaf image.")
                         error = "This doesn't look like a leaf. Please upload a clear photo of a plant leaf."
                     else:
                         original_image = f"/static/uploads/{unique_name}"
-                        pred = model.predict(input_image, verbose=0)[0]
-                        if len(pred) < 2:
-                            raise ValueError("Invalid model output")
-
-                        idx = int(np.argmax(pred))
-                        prediction = class_names[idx] if idx < len(class_names) else f"Class {idx}"
-                        confidence = round(float(pred[idx]) * 100, 2)
-
-                        sorted_pred = np.sort(pred)[::-1]
-                        top1_prob = float(sorted_pred[0]) * 100
-                        top2_prob = float(sorted_pred[1]) * 100
-                        margin = round(top1_prob - top2_prob, 2)
+                        raw_pred = model.predict(input_image, verbose=0)[0]
+                        result = assess_prediction(raw_pred, class_names, model_key, top_k=3)
+                        idx = result["predicted_index"]
+                        prediction = result["prediction"]
+                        confidence = result["confidence"]
+                        margin = result["margin"]
 
                         print(f"Plant type: {selected_plant_type}")
+                        print(f"Model: {result['model_version']}")
                         print(f"Prediction: {prediction}")
                         print(f"Confidence: {confidence}%")
                         print(f"Margin (top1 - top2): {margin}%")
 
-                        if confidence < CONFIDENCE_THRESHOLD or margin < MARGIN_THRESHOLD:
+                        if not result["accepted"]:
                             print("Rejected — confidence or margin below threshold.")
                             error = "The image is unclear, or the disease could not be identified confidently. Please upload a clearer photo of the leaf."
                             prediction = None
                             confidence = None
                             original_image = None
                         else:
-                            confidence_level, confidence_label = get_confidence_level(confidence)
+                            confidence_level = result["confidence_level"]
+                            confidence_label = result["confidence_label"]
                             ai_explanation = [
                                 f"The model predicted {prediction} as the most likely class.",
                                 f"The model assigned a confidence score of {confidence}%, indicating strong classification confidence.",
