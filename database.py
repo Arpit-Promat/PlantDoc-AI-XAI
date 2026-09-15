@@ -1,13 +1,15 @@
-"""Database layer for ATHARVADRISHTI.
+"""Persistent database layer for ATHARVADRISHTI.
 
-The application can run with SQLite by default and can be switched to
-PostgreSQL (or another SQLAlchemy-supported database) with DATABASE_URL.
-The existing frontend does not depend on this module directly.
+SQLite is the zero-configuration default. Set DATABASE_URL to PostgreSQL
+(or another SQLAlchemy-supported database) for deployment.
+The existing frontend/UI is intentionally not modified by this module.
 """
 
+import json
 import os
 from datetime import datetime, timezone
 
+from flask import jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Index
 
@@ -22,18 +24,11 @@ class User(db.Model):
     name = db.Column(db.String(120), nullable=True)
     email = db.Column(db.String(255), unique=True, nullable=True, index=True)
     password_hash = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
+                           default=lambda: datetime.now(timezone.utc))
 
-    farms = db.relationship(
-        "Farm", back_populates="user", cascade="all, delete-orphan"
-    )
-    scans = db.relationship(
-        "Scan", back_populates="user", cascade="all, delete-orphan"
-    )
+    farms = db.relationship("Farm", back_populates="user", cascade="all, delete-orphan")
+    scans = db.relationship("Scan", back_populates="user", cascade="all, delete-orphan")
 
 
 class Farm(db.Model):
@@ -43,16 +38,11 @@ class Farm(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     farm_name = db.Column(db.String(160), nullable=False)
     location = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
+                           default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship("User", back_populates="farms")
-    crops = db.relationship(
-        "Crop", back_populates="farm", cascade="all, delete-orphan"
-    )
+    crops = db.relationship("Crop", back_populates="farm", cascade="all, delete-orphan")
     scans = db.relationship("Scan", back_populates="farm")
 
 
@@ -62,11 +52,8 @@ class Crop(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     farm_id = db.Column(db.Integer, db.ForeignKey("farms.id"), nullable=True, index=True)
     crop_name = db.Column(db.String(120), nullable=False)
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
+                           default=lambda: datetime.now(timezone.utc))
 
     farm = db.relationship("Farm", back_populates="crops")
     scans = db.relationship("Scan", back_populates="crop")
@@ -92,12 +79,8 @@ class Scan(db.Model):
     error_message = db.Column(db.Text, nullable=True)
     top_predictions = db.Column(db.Text, nullable=True)
 
-    created_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        index=True,
-    )
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False,
+                           default=lambda: datetime.now(timezone.utc), index=True)
     completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     user = db.relationship("User", back_populates="scans")
@@ -125,35 +108,100 @@ class Scan(db.Model):
             "leaf_probability": self.leaf_probability,
             "prediction_status": self.prediction_status,
             "error_message": self.error_message,
-            "top_predictions": self.top_predictions,
+            "top_predictions": json.loads(self.top_predictions) if self.top_predictions else [],
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
         }
 
 
+def _record_scan_from_request(template, context):
+    """Persist a completed UI prediction without changing the template contract."""
+    if request.method != "POST" or template.name != "index.html":
+        return
+    if not context.get("prediction") and not context.get("error"):
+        return
+
+    try:
+        filename = None
+        if "image" in request.files:
+            filename = request.files["image"].filename
+
+        prediction = context.get("prediction")
+        confidence = context.get("confidence")
+        error = context.get("error")
+
+        # The current UI exposes prediction/confidence. Detailed model metrics
+        # can be added to the record by later authenticated API versions.
+        scan = Scan(
+            original_filename=filename,
+            image_path=context.get("original_image"),
+            plant_type=context.get("selected_plant_type", "general"),
+            model_used=("mango_model" if context.get("selected_plant_type") == "mango"
+                        else "plantdoc_model") if prediction else None,
+            prediction=prediction,
+            confidence=float(confidence) if confidence is not None else None,
+            prediction_status="completed" if prediction else "rejected",
+            error_message=error if not prediction else None,
+            completed_at=datetime.now(timezone.utc),
+        )
+        db.session.add(scan)
+        db.session.commit()
+    except Exception:
+        # Database logging must never break the existing prediction UI.
+        db.session.rollback()
+
+
+def _register_api_routes(app):
+    @app.get("/api/health")
+    def database_health():
+        try:
+            db.session.execute(db.text("SELECT 1"))
+            return jsonify({"status": "ok", "database": "connected"})
+        except Exception:
+            return jsonify({"status": "error", "database": "unavailable"}), 503
+
+    @app.get("/api/scans")
+    def scan_history():
+        limit = request.args.get("limit", default=20, type=int)
+        limit = max(1, min(limit, 100))
+        scans = Scan.query.order_by(Scan.created_at.desc()).limit(limit).all()
+        return jsonify({"count": len(scans), "scans": [scan.to_dict() for scan in scans]})
+
+    @app.get("/api/scans/<int:scan_id>")
+    def scan_detail(scan_id):
+        scan = db.session.get(Scan, scan_id)
+        if scan is None:
+            return jsonify({"error": "Scan not found"}), 404
+        return jsonify(scan.to_dict())
+
+
 def configure_database(app):
-    """Configure SQLAlchemy without changing the existing UI or routes' contract."""
+    """Configure SQLAlchemy and initialize the Phase 1 backend."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     default_sqlite = os.path.join(base_dir, "instance", "atharvadrishti.db")
     os.makedirs(os.path.dirname(default_sqlite), exist_ok=True)
 
     database_url = os.getenv("DATABASE_URL", f"sqlite:///{default_sqlite}")
-    # Some cloud providers expose postgres://, while SQLAlchemy expects postgresql://.
     if database_url.startswith("postgres://"):
-        database_url = "postgresql://" + database_url[len("postgres://") :]
+        database_url = "postgresql://" + database_url[len("postgres://"):]
 
     app.config.setdefault("SQLALCHEMY_DATABASE_URI", database_url)
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
-    app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {})
 
-    # SQLite needs this for threaded Flask requests. It is ignored by other DBs.
     if database_url.startswith("sqlite"):
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-            **app.config["SQLALCHEMY_ENGINE_OPTIONS"],
+            **app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}),
             "connect_args": {"check_same_thread": False},
         }
 
     db.init_app(app)
+    _register_api_routes(app)
+
+    try:
+        from flask import template_rendered
+        template_rendered.connect(_record_scan_from_request, app)
+    except Exception:
+        pass
 
     with app.app_context():
         db.create_all()
