@@ -1,0 +1,66 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_DEBUG: "0"
+      SECRET_KEY: "${SECRET_KEY:-change-this-to-a-long-random-secret}"
+      DATABASE_URL: postgresql+psycopg://atharvadrishti:atharvadrishti@db:5432/atharvadrishti
+      RATELIMIT_STORAGE_URI: redis://redis:6379/1
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      WEB_CONCURRENCY: "2"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: celery -A tasks.celery worker --loglevel=INFO --concurrency=1
+    environment:
+      FLASK_DEBUG: "0"
+      SECRET_KEY: "${SECRET_KEY:-change-this-to-a-long-random-secret}"
+      DATABASE_URL: postgresql+psycopg://atharvadrishti:atharvadrishti@db:5432/atharvadrishti
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: atharvadrishti
+      POSTGRES_USER: atharvadrishti
+      POSTGRES_PASSWORD: atharvadrishti
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atharvadrishti -d atharvadrishti"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  redis_data:
+  postgres_data:
