@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from flask import jsonify, request
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Index
+from sqlalchemy import Index, text
 
 
 db = SQLAlchemy()
@@ -19,28 +19,24 @@ db = SQLAlchemy()
 
 class User(db.Model):
     __tablename__ = "users"
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=True)
     email = db.Column(db.String(255), unique=True, nullable=True, index=True)
     password_hash = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False,
                            default=lambda: datetime.now(timezone.utc))
-
     farms = db.relationship("Farm", back_populates="user", cascade="all, delete-orphan")
     scans = db.relationship("Scan", back_populates="user", cascade="all, delete-orphan")
 
 
 class Farm(db.Model):
     __tablename__ = "farms"
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     farm_name = db.Column(db.String(160), nullable=False)
     location = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False,
                            default=lambda: datetime.now(timezone.utc))
-
     user = db.relationship("User", back_populates="farms")
     crops = db.relationship("Crop", back_populates="farm", cascade="all, delete-orphan")
     scans = db.relationship("Scan", back_populates="farm")
@@ -48,25 +44,21 @@ class Farm(db.Model):
 
 class Crop(db.Model):
     __tablename__ = "crops"
-
     id = db.Column(db.Integer, primary_key=True)
     farm_id = db.Column(db.Integer, db.ForeignKey("farms.id"), nullable=True, index=True)
     crop_name = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False,
                            default=lambda: datetime.now(timezone.utc))
-
     farm = db.relationship("Farm", back_populates="crops")
     scans = db.relationship("Scan", back_populates="crop")
 
 
 class Scan(db.Model):
     __tablename__ = "scans"
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     farm_id = db.Column(db.Integer, db.ForeignKey("farms.id"), nullable=True, index=True)
     crop_id = db.Column(db.Integer, db.ForeignKey("crops.id"), nullable=True, index=True)
-
     image_path = db.Column(db.String(500), nullable=True)
     original_filename = db.Column(db.String(255), nullable=True)
     plant_type = db.Column(db.String(80), nullable=False, default="general")
@@ -78,15 +70,12 @@ class Scan(db.Model):
     prediction_status = db.Column(db.String(40), nullable=False, default="pending")
     error_message = db.Column(db.Text, nullable=True)
     top_predictions = db.Column(db.Text, nullable=True)
-
     created_at = db.Column(db.DateTime(timezone=True), nullable=False,
                            default=lambda: datetime.now(timezone.utc), index=True)
     completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
-
     user = db.relationship("User", back_populates="scans")
     farm = db.relationship("Farm", back_populates="scans")
     crop = db.relationship("Crop", back_populates="scans")
-
     __table_args__ = (
         Index("ix_scans_user_created_at", "user_id", "created_at"),
         Index("ix_scans_status_created_at", "prediction_status", "created_at"),
@@ -114,30 +103,23 @@ class Scan(db.Model):
         }
 
 
-def _record_scan_from_request(template, context):
-    """Persist a completed UI prediction without changing the template contract."""
+def _record_scan_from_request(sender, template, context, **extra):
+    """Persist UI predictions without changing the existing template contract."""
     if request.method != "POST" or template.name != "index.html":
         return
     if not context.get("prediction") and not context.get("error"):
         return
-
     try:
-        filename = None
-        if "image" in request.files:
-            filename = request.files["image"].filename
-
+        filename = request.files["image"].filename if "image" in request.files else None
         prediction = context.get("prediction")
         confidence = context.get("confidence")
         error = context.get("error")
-
-        # The current UI exposes prediction/confidence. Detailed model metrics
-        # can be added to the record by later authenticated API versions.
+        plant_type = context.get("selected_plant_type", "general")
         scan = Scan(
             original_filename=filename,
             image_path=context.get("original_image"),
-            plant_type=context.get("selected_plant_type", "general"),
-            model_used=("mango_model" if context.get("selected_plant_type") == "mango"
-                        else "plantdoc_model") if prediction else None,
+            plant_type=plant_type,
+            model_used=("mango_model" if plant_type == "mango" else "plantdoc_model") if prediction else None,
             prediction=prediction,
             confidence=float(confidence) if confidence is not None else None,
             prediction_status="completed" if prediction else "rejected",
@@ -147,7 +129,6 @@ def _record_scan_from_request(template, context):
         db.session.add(scan)
         db.session.commit()
     except Exception:
-        # Database logging must never break the existing prediction UI.
         db.session.rollback()
 
 
@@ -155,7 +136,7 @@ def _register_api_routes(app):
     @app.get("/api/health")
     def database_health():
         try:
-            db.session.execute(db.text("SELECT 1"))
+            db.session.execute(text("SELECT 1"))
             return jsonify({"status": "ok", "database": "connected"})
         except Exception:
             return jsonify({"status": "error", "database": "unavailable"}), 503
@@ -180,28 +161,22 @@ def configure_database(app):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     default_sqlite = os.path.join(base_dir, "instance", "atharvadrishti.db")
     os.makedirs(os.path.dirname(default_sqlite), exist_ok=True)
-
     database_url = os.getenv("DATABASE_URL", f"sqlite:///{default_sqlite}")
     if database_url.startswith("postgres://"):
         database_url = "postgresql://" + database_url[len("postgres://"):]
-
     app.config.setdefault("SQLALCHEMY_DATABASE_URI", database_url)
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
-
     if database_url.startswith("sqlite"):
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
             **app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}),
             "connect_args": {"check_same_thread": False},
         }
-
     db.init_app(app)
     _register_api_routes(app)
-
     try:
         from flask import template_rendered
         template_rendered.connect(_record_scan_from_request, app)
     except Exception:
         pass
-
     with app.app_context():
         db.create_all()
