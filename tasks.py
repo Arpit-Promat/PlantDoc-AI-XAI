@@ -1,5 +1,6 @@
 """Optional background task queue for scalable AI inference."""
 
+import json
 import os
 from datetime import datetime, timezone
 
@@ -29,17 +30,12 @@ celery = create_celery()
 
 @celery.task(bind=True, name="atharvadrishti.predict_scan")
 def predict_scan(self, scan_id):
-    """Run an existing queued scan through the same model logic as Flask."""
+    """Run a queued scan through the shared prediction engine."""
     import numpy as np
     from tensorflow.keras.preprocessing import image
-    from app import (
-        CONFIDENCE_THRESHOLD,
-        MARGIN_THRESHOLD,
-        app as flask_app,
-        get_model_and_classes,
-        is_leaf_image,
-    )
+    from app import app as flask_app, get_model_and_classes, is_leaf_image
     from database import Scan, db
+    from prediction_engine import assess_prediction
 
     with flask_app.app_context():
         scan = db.session.get(Scan, int(scan_id))
@@ -51,6 +47,7 @@ def predict_scan(self, scan_id):
 
         try:
             model, class_names = get_model_and_classes(scan.plant_type)
+            model_key = "mango" if scan.plant_type == "mango" else "general"
             if not scan.image_path:
                 raise ValueError("Missing scan image path")
 
@@ -67,26 +64,25 @@ def predict_scan(self, scan_id):
                 scan.error_message = "Image was not classified as a leaf."
             else:
                 pred = model.predict(input_image, verbose=0)[0]
-                if len(pred) < 2:
-                    raise ValueError("Invalid model output")
+                result = assess_prediction(pred, class_names, model_key, top_k=3)
 
-                idx = int(np.argmax(pred))
-                scan.prediction = class_names[idx] if idx < len(class_names) else f"Class {idx}"
-                scan.confidence = round(float(pred[idx]) * 100, 2)
-                sorted_pred = np.sort(pred)[::-1]
-                scan.prediction_margin = round((float(sorted_pred[0]) - float(sorted_pred[1])) * 100, 2)
-                scan.model_used = "mango_model" if scan.plant_type == "mango" else "plantdoc_model"
-
-                if scan.confidence < CONFIDENCE_THRESHOLD or scan.prediction_margin < MARGIN_THRESHOLD:
-                    scan.prediction_status = "rejected"
-                    scan.error_message = "Confidence or prediction margin below threshold."
-                else:
-                    scan.prediction_status = "completed"
-                    scan.error_message = None
+                scan.prediction = result["prediction"]
+                scan.confidence = result["confidence"]
+                scan.prediction_margin = result["margin"]
+                scan.model_used = result["model_version"]
+                scan.top_predictions = json.dumps(result["top_predictions"])
+                scan.prediction_status = result["status"]
+                scan.error_message = None if result["accepted"] else "Confidence or prediction margin below threshold."
 
             scan.completed_at = datetime.now(timezone.utc)
             db.session.commit()
-            return {"status": scan.prediction_status, "scan_id": scan.id, "prediction": scan.prediction}
+            return {
+                "status": scan.prediction_status,
+                "scan_id": scan.id,
+                "prediction": scan.prediction,
+                "confidence": scan.confidence,
+                "margin": scan.prediction_margin,
+            }
         except Exception as exc:
             db.session.rollback()
             scan = db.session.get(Scan, int(scan_id))
