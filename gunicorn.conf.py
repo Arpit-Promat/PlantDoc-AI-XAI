@@ -1,16 +1,10 @@
-"""Production Gunicorn configuration for ATHARVADRISHTI.
+"""Production Gunicorn configuration for ATHARVADRISHTRI."""
 
-The Flask application remains unchanged at the UI level. Gunicorn can run
-multiple worker processes so requests can be distributed across workers.
-Tune WEB_CONCURRENCY at deployment time based on available CPU and RAM,
-because each worker loads the TensorFlow models into its own process.
-"""
-
-import multiprocessing
 import os
 
 bind = os.getenv("GUNICORN_BIND", "0.0.0.0:5000")
-workers = int(os.getenv("WEB_CONCURRENCY", max(1, multiprocessing.cpu_count())))
+# TensorFlow models are loaded per worker, so start conservatively and scale deliberately.
+workers = int(os.getenv("WEB_CONCURRENCY", "2"))
 worker_class = os.getenv("GUNICORN_WORKER_CLASS", "sync")
 timeout = int(os.getenv("GUNICORN_TIMEOUT", "180"))
 graceful_timeout = int(os.getenv("GUNICORN_GRACEFUL_TIMEOUT", "30"))
