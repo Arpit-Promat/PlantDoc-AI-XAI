@@ -7,12 +7,16 @@ from flask import Flask, render_template, request
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 
+# Phase 1: persistent backend database. This does not alter the frontend/UI.
+from database import configure_database
+
 
 # =========================
 # FLASK APP
 # =========================
 
 app = Flask(__name__)
+configure_database(app)
 
 
 # =========================
