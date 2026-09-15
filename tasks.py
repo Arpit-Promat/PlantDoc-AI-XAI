@@ -1,9 +1,4 @@
-"""Optional background task queue for scalable AI inference.
-
-The existing synchronous web UI is untouched. Production deployments can
-send API-created scan jobs to this worker so expensive TensorFlow inference
-runs outside the web request process.
-"""
+"""Optional background task queue for scalable AI inference."""
 
 import os
 from datetime import datetime, timezone
@@ -12,9 +7,7 @@ from celery import Celery
 
 
 def create_celery():
-    broker = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL")
-    if not broker:
-        broker = "redis://localhost:6379/0"
+    broker = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL") or "redis://localhost:6379/0"
     backend = os.getenv("CELERY_RESULT_BACKEND") or broker
     celery = Celery("atharvadrishti", broker=broker, backend=backend)
     celery.conf.update(
@@ -36,28 +29,19 @@ celery = create_celery()
 
 @celery.task(bind=True, name="atharvadrishti.predict_scan")
 def predict_scan(self, scan_id):
-    """Run an existing scan through the same models used by Flask.
-
-    The worker updates only the database. The caller can poll the scan API.
-    """
-    from database import Scan, db
+    """Run an existing queued scan through the same model logic as Flask."""
+    import numpy as np
+    from tensorflow.keras.preprocessing import image
     from app import (
         CONFIDENCE_THRESHOLD,
         MARGIN_THRESHOLD,
+        app as flask_app,
         get_model_and_classes,
         is_leaf_image,
     )
-    from tensorflow.keras.preprocessing import image
-    import numpy as np
+    from database import Scan, db
 
-    from flask import current_app
-
-    app = current_app._get_current_object() if current_app else None
-    if app is None:
-        from app import app as flask_app
-        app = flask_app
-
-    with app.app_context():
+    with flask_app.app_context():
         scan = db.session.get(Scan, int(scan_id))
         if scan is None:
             return {"status": "not_found", "scan_id": scan_id}
@@ -67,7 +51,10 @@ def predict_scan(self, scan_id):
 
         try:
             model, class_names = get_model_and_classes(scan.plant_type)
-            file_path = os.path.join(app.root_path, scan.image_path.lstrip("/"))
+            if not scan.image_path:
+                raise ValueError("Missing scan image path")
+
+            file_path = os.path.join(flask_app.root_path, scan.image_path.lstrip("/"))
             img = image.load_img(file_path, target_size=(224, 224))
             arr = image.img_to_array(img) / 255.0
             input_image = np.expand_dims(arr, axis=0)
@@ -78,31 +65,24 @@ def predict_scan(self, scan_id):
             if not is_leaf:
                 scan.prediction_status = "rejected"
                 scan.error_message = "Image was not classified as a leaf."
-                scan.completed_at = datetime.now(timezone.utc)
-                db.session.commit()
-                return {"status": "rejected", "scan_id": scan.id}
-
-            pred = model.predict(input_image, verbose=0)[0]
-            if len(pred) < 2:
-                raise ValueError("Invalid model output")
-
-            idx = int(np.argmax(pred))
-            prediction = class_names[idx] if idx < len(class_names) else f"Class {idx}"
-            confidence = round(float(pred[idx]) * 100, 2)
-            sorted_pred = np.sort(pred)[::-1]
-            margin = round((float(sorted_pred[0]) - float(sorted_pred[1])) * 100, 2)
-
-            scan.prediction = prediction
-            scan.confidence = confidence
-            scan.prediction_margin = margin
-            scan.model_used = "mango_model" if scan.plant_type == "mango" else "plantdoc_model"
-
-            if confidence < CONFIDENCE_THRESHOLD or margin < MARGIN_THRESHOLD:
-                scan.prediction_status = "rejected"
-                scan.error_message = "Confidence or prediction margin below threshold."
             else:
-                scan.prediction_status = "completed"
-                scan.error_message = None
+                pred = model.predict(input_image, verbose=0)[0]
+                if len(pred) < 2:
+                    raise ValueError("Invalid model output")
+
+                idx = int(np.argmax(pred))
+                scan.prediction = class_names[idx] if idx < len(class_names) else f"Class {idx}"
+                scan.confidence = round(float(pred[idx]) * 100, 2)
+                sorted_pred = np.sort(pred)[::-1]
+                scan.prediction_margin = round((float(sorted_pred[0]) - float(sorted_pred[1])) * 100, 2)
+                scan.model_used = "mango_model" if scan.plant_type == "mango" else "plantdoc_model"
+
+                if scan.confidence < CONFIDENCE_THRESHOLD or scan.prediction_margin < MARGIN_THRESHOLD:
+                    scan.prediction_status = "rejected"
+                    scan.error_message = "Confidence or prediction margin below threshold."
+                else:
+                    scan.prediction_status = "completed"
+                    scan.error_message = None
 
             scan.completed_at = datetime.now(timezone.utc)
             db.session.commit()
