@@ -1,11 +1,116 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ATHARVADRISHTI | Intelligent Plant Health</title><link rel="stylesheet" href="{{ url_for('static', filename='product.css') }}"></head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ATHARVADRISHTI — AI-powered plant disease detection, crop intelligence and secure farmer workflows.">
+    <title>ATHARVADRISHTI | Smarter Insights for Healthier Crops</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+</head>
 <body>
-<nav class="nav"><div class="shell nav-inner"><a class="brand" href="/landing"><span class="brand-mark">🌿</span>ATHARVADRISHTI</a><div class="nav-actions"><a class="link nav-links-hide" href="#features">Features</a><a class="link nav-links-hide" href="#security">Security</a><a class="btn btn-soft" href="/login">Log in</a><a class="btn btn-primary" href="/signup">Create account</a></div></div></nav>
+<header class="topbar">
+    <a class="brand" href="/landing">
+        <span class="brand-leaf">◒</span>
+        <span><strong>ATHARVADRISHTI</strong><small>AI for Healthier Crops</small></span>
+    </a>
+    <nav class="topnav" aria-label="Primary navigation">
+        <a class="active" href="/landing">⌂ <span>Home</span></a>
+        <a href="#features">▤ <span>Features</span></a>
+        <a href="#about">◷ <span>About</span></a>
+        <a href="#help">? <span>Help</span></a>
+    </nav>
+    <div class="top-actions">
+        <button class="icon-btn" type="button" id="themeBtn" aria-label="Toggle theme">☼</button>
+        <a class="outline-btn" href="/login">Login</a>
+        <a class="solid-btn" href="/signup">Get Started</a>
+    </div>
+</header>
+
 <main>
-<section class="hero shell"><div><span class="eyebrow">AI-POWERED PLANT HEALTH</span><h1>Understand your crop with <span>intelligent vision.</span></h1><p>ATHARVADRISHTI combines deep-learning plant classification, leaf screening, confidence analysis and explainable AI to turn a plant image into a clearer health signal.</p><div class="hero-ctas"><a class="btn btn-primary" href="/signup">Start with an account</a><a class="btn btn-soft" href="/">Open scanner</a></div><div class="mini-proof"><span class="pill">✓ General model</span><span class="pill">✓ Mango model</span><span class="pill">✓ SHAP explanations</span><span class="pill">✓ Crop analytics</span></div></div><div class="hero-card"><div class="scan-ring"></div><div class="float a">⚡ AI analysis</div><div class="leaf"></div><div class="float b">🧠 Explainable AI</div></div></section>
-<section class="section shell" id="features"><div class="section-head"><span class="eyebrow">ONE PLATFORM</span><h2>From image to insight</h2><p>Built around the capabilities already present in the project, now packaged as a product experience.</p></div><div class="grid"><article class="feature"><div class="icon">🔍</div><h3>Leaf-first screening</h3><p>A dedicated detector filters non-leaf images before disease classification.</p></article><article class="feature"><div class="icon">🧬</div><h3>Deep-learning models</h3><p>General and Mango-specific classification paths provide crop-aware predictions.</p></article><article class="feature"><div class="icon">📊</div><h3>Confidence intelligence</h3><p>Confidence and prediction margin help separate stronger predictions from uncertain results.</p></article><article class="feature"><div class="icon">🧠</div><h3>Explainable AI</h3><p>SHAP-based visual explanations show the image regions influencing the model output.</p></article><article class="feature"><div class="icon">🌱</div><h3>Crop monitoring</h3><p>Farm and crop records connect repeated scans with crop-level analytics and patterns.</p></article><article class="feature"><div class="icon">🔄</div><h3>Human feedback loop</h3><p>Users can submit correction feedback as reviewed evidence for future model improvement.</p></article></div></section>
-<section class="section shell" id="security"><div class="security"><div><span class="eyebrow">ACCOUNT SECURITY</span><h2>Your crop data, protected.</h2><p>The product layer now supports account creation, verified email, verified mobile number and OTP-based two-factor authentication.</p></div><div class="checks"><div class="check">✓ Password-protected account</div><div class="check">✓ Email verification</div><div class="check">✓ Mobile number verification</div><div class="check">✓ Two-factor authentication by email or SMS</div></div></div></section>
-<section class="cta shell"><div class="cta-box"><span class="eyebrow">READY TO ANALYZE?</span><h2>Bring your plant image to the scanner.</h2><p>Create a secure account to unlock the product workflow while the existing diagnosis experience remains available.</p><a class="btn btn-primary" href="/signup">Create your account</a></div></section>
-</main><footer class="footer"><div class="shell">© 2026 <strong>ATHARVADRISHTI</strong> · Intelligent and Explainable Plant Health Analysis</div></footer>
-</body></html>
+<section class="hero" id="about">
+    <div class="hero-copy">
+        <div class="hero-badge">AI-Powered Plant Disease Detection</div>
+        <h1>Smarter Insights for <span>Healthier Crops</span></h1>
+        <p>ATHARVADRISHTI uses advanced AI to detect plant diseases, provide expert guidance and help farmers make better decisions for higher yield and healthier crops.</p>
+        <div class="hero-mini-features">
+            <div><b>⌁</b><span>Detect Diseases<br>with AI</span></div><i></i>
+            <div><b>✓</b><span>Get Expert<br>Guidance</span></div><i></i>
+            <div><b>↗</b><span>Improve Yield<br>&amp; Productivity</span></div>
+        </div>
+        <div class="hero-buttons">
+            <a class="solid-btn big" href="/">Start Now <span>→</span></a>
+            <a class="outline-btn big" href="#features">Learn More</a>
+        </div>
+    </div>
+
+    <div class="hero-scene" aria-label="AI plant analysis visualization">
+        <div class="field-blur"></div>
+        <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="leaf-photo">
+                <div class="scan-corner tl"></div><div class="scan-corner tr"></div><div class="scan-corner bl"></div><div class="scan-corner br"></div>
+                <div class="leaf-real">🌿</div>
+                <div class="disease-chip"><span>◒</span><div><small>Disease Detected</small><strong>Tomato Early Blight</strong></div></div>
+            </div>
+        </div>
+        <div class="field-label">AI-Powered<br>Plant Analysis</div>
+    </div>
+
+    <section class="login-card" aria-label="Login panel">
+        <div class="login-tabs"><button class="tab active" type="button">Login</button><a class="tab" href="/signup">Sign Up</a></div>
+        <div id="loginMessage" aria-live="polite"></div>
+        <form id="landingLoginForm">
+            <label class="input-wrap"><span>✉</span><input id="landingEmail" type="email" placeholder="Email or Mobile Number" autocomplete="username" required></label>
+            <label class="input-wrap"><span>⌑</span><input id="landingPassword" type="password" placeholder="Password" autocomplete="current-password" required><button class="eye" id="showPass" type="button">◉</button></label>
+            <a class="forgot" href="/login">Forgot Password?</a>
+            <button class="login-submit" type="submit">Login</button>
+        </form>
+        <div class="or"><span></span>or continue with<span></span></div>
+        <div class="social-row"><button type="button" class="social" disabled>G</button><button type="button" class="social" disabled>⊞</button><button type="button" class="social" disabled>●</button></div>
+        <div class="security-note"><strong>🛡 2-Factor Authentication</strong><span>Available for extra security</span></div>
+        <a class="join-note" href="/signup">New here? Create your secure account →</a>
+    </section>
+</section>
+
+<section class="feature-strip" id="features">
+    <article><div class="feature-symbol">◉</div><h3>AI Disease Detection</h3><p>Identify plant diseases with high confidence using advanced AI models.</p></article>
+    <article><div class="feature-symbol">🛡</div><h3>Secure &amp; Reliable</h3><p>Your data is protected with layered account security and verification.</p></article>
+    <article><div class="feature-symbol">🌱</div><h3>Farm Management</h3><p>Manage your farms, crops and track plant health in one place.</p></article>
+    <article><div class="feature-symbol">▤</div><h3>Expert Guidance</h3><p>Get actionable advice and observation guidance for healthier crops.</p></article>
+    <article><div class="feature-symbol">↗</div><h3>Analytics &amp; Reports</h3><p>Track trends, monitor crop health and make data-driven decisions.</p></article>
+    <article><div class="feature-symbol">▯</div><h3>Multi-Device Access</h3><p>Access your data anytime, anywhere from any modern device.</p></article>
+</section>
+
+<section class="secure-section" id="help">
+    <div class="secure-copy">
+        <div class="section-kicker">SECURE ACCESS</div>
+        <h2>Multi-Layer Authentication</h2>
+        <p>Your account is protected with Email Verification, Mobile Number Verification and Two-Factor Authentication (2FA) for complete security.</p>
+        <ul><li>✓ <span>Email Verification</span></li><li>✓ <span>Mobile Number Verification</span></li><li>✓ <span>Two-Factor Authentication (2FA)</span></li></ul>
+        <div class="soft-plant">◢</div>
+    </div>
+    <div class="auth-steps">
+        <article class="auth-step"><div class="step-head"><span>◯</span><strong>1. Sign Up / Login</strong></div><p>Create your account or login with your existing credentials.</p><input disabled value="✉  Email or Mobile Number"><input disabled value="⌑  Password"><button class="step-btn" type="button">Login / Sign Up</button><small>Don't have an account? <a href="/signup">Sign Up</a></small></article>
+        <div class="arrow">→</div>
+        <article class="auth-step"><div class="step-head"><span>✉</span><strong>2. Email Verification</strong></div><p>Verify your email address with the code sent to your inbox.</p><small>Enter 6-digit code</small><div class="otp-boxes"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i></div><a class="step-btn" href="/verify">Verify Email</a><small>Resend code (00:45)</small></article>
+        <div class="arrow">→</div>
+        <article class="auth-step"><div class="step-head"><span>▯</span><strong>3. Mobile Verification</strong></div><p>Verify your mobile number with the OTP sent via SMS.</p><small>Enter 6-digit OTP</small><div class="otp-boxes"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i></div><a class="step-btn" href="/verify">Verify Mobile</a><small>Resend OTP (00:45)</small></article>
+        <div class="arrow">→</div>
+        <article class="auth-step"><div class="step-head"><span>🛡</span><strong>4. Two-Factor Authentication</strong></div><p>Add an extra layer of security with OTP-based 2FA.</p><label class="radio"><input type="radio" checked disabled> OTP via SMS</label><label class="radio"><input type="radio" disabled> Authenticator App</label><a class="step-btn" href="/two-factor">Enable 2FA</a><small>Your account is now secure. ✓</small></article>
+    </div>
+</section>
+
+<section class="green-footer-banner"><h2>Together for a Greener Tomorrow</h2><p>Better technology. Healthier crops. Stronger farmers.</p></section>
+</main>
+<footer class="site-footer">© 2026 ATHARVADRISHTI · Intelligent Plant Health Analysis</footer>
+
+<script>
+(function(){
+    document.getElementById('themeBtn').addEventListener('click',()=>document.body.classList.toggle('dark-mode'));
+    document.getElementById('showPass').addEventListener('click',()=>{const p=document.getElementById('landingPassword');p.type=p.type==='password'?'text':'password';});
+    const form=document.getElementById('landingLoginForm'),msg=document.getElementById('loginMessage');
+    form.addEventListener('submit',async(e)=>{e.preventDefault();msg.innerHTML='';try{const email=document.getElementById('landingEmail').value;const r=await fetch('/api/product-auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:document.getElementById('landingPassword').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Login failed');if(d.two_factor_required){localStorage.setItem('loginEmail',email);localStorage.setItem('login2faChannel',d.channel);location.href='/two-factor?mode=login';return;}localStorage.setItem('accessToken',d.access_token);location.href='/';}catch(err){msg.innerHTML='<div class="login-error">'+err.message+'</div>';}});
+})();
+</script>
+</body>
+</html>
