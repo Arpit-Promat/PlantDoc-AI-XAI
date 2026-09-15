@@ -109,7 +109,7 @@ class PredictionFeedback(db.Model):
     is_prediction_correct = db.Column(db.Boolean, nullable=True)
     notes = db.Column(db.String(1000), nullable=True)
     review_status = db.Column(db.String(40), nullable=False, default="submitted", index=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     scan = db.relationship("Scan", back_populates="feedback_items")
     user = db.relationship("User", back_populates="feedback_items")
 
@@ -269,7 +269,11 @@ def configure_database(app):
             "pool_pre_ping": True,
         }
 
+    # Import product-auth models before create_all so verification tables are created.
+    from product_auth import register_product_auth_features
+
     db.init_app(app)
+    register_product_auth_features(app)
     _register_api_routes(app)
     try:
         from flask import template_rendered
