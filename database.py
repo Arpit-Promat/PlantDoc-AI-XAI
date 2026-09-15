@@ -24,6 +24,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     farms = db.relationship("Farm", back_populates="user", cascade="all, delete-orphan")
     scans = db.relationship("Scan", back_populates="user", cascade="all, delete-orphan")
+    feedback_items = db.relationship("PredictionFeedback", back_populates="user", cascade="all, delete-orphan")
 
 
 class Farm(db.Model):
@@ -70,6 +71,7 @@ class Scan(db.Model):
     user = db.relationship("User", back_populates="scans")
     farm = db.relationship("Farm", back_populates="scans")
     crop = db.relationship("Crop", back_populates="scans")
+    feedback_items = db.relationship("PredictionFeedback", back_populates="scan", cascade="all, delete-orphan")
     __table_args__ = (
         Index("ix_scans_user_created_at", "user_id", "created_at"),
         Index("ix_scans_status_created_at", "prediction_status", "created_at"),
@@ -94,6 +96,34 @@ class Scan(db.Model):
             "top_predictions": json.loads(self.top_predictions) if self.top_predictions else [],
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
+class PredictionFeedback(db.Model):
+    __tablename__ = "prediction_feedback"
+    id = db.Column(db.Integer, primary_key=True)
+    scan_id = db.Column(db.Integer, db.ForeignKey("scans.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    predicted_label = db.Column(db.String(255), nullable=True)
+    corrected_label = db.Column(db.String(255), nullable=True)
+    is_prediction_correct = db.Column(db.Boolean, nullable=True)
+    notes = db.Column(db.String(1000), nullable=True)
+    review_status = db.Column(db.String(40), nullable=False, default="submitted", index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    scan = db.relationship("Scan", back_populates="feedback_items")
+    user = db.relationship("User", back_populates="feedback_items")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "scan_id": self.scan_id,
+            "user_id": self.user_id,
+            "predicted_label": self.predicted_label,
+            "corrected_label": self.corrected_label,
+            "is_prediction_correct": self.is_prediction_correct,
+            "notes": self.notes,
+            "review_status": self.review_status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 
