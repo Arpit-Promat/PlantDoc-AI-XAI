@@ -3,14 +3,15 @@ import json
 import uuid
 import numpy as np
 
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 
 from database import configure_database
 from security import configure_security, limiter, validate_uploaded_image
 from management_api import register_management_routes
-from model_registry import get_model_spec
+from model_registry import get_model_spec, model_identifier
+from observability import log_event, timed_event
 from prediction_engine import assess_prediction
 
 
@@ -24,27 +25,73 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GENERAL_SPEC = get_model_spec("general")
 GENERAL_MODEL_PATH = os.path.join(BASE_DIR, GENERAL_SPEC.model_path)
 GENERAL_CLASS_PATH = os.path.join(BASE_DIR, GENERAL_SPEC.class_names_path)
-general_model = load_model(GENERAL_MODEL_PATH, compile=False)
+with timed_event("model_load", model=model_identifier("general")):
+    general_model = load_model(GENERAL_MODEL_PATH, compile=False)
 with open(GENERAL_CLASS_PATH, encoding="utf-8") as f:
     general_class_names = json.load(f)
 
 MANGO_SPEC = get_model_spec("mango")
 MANGO_MODEL_PATH = os.path.join(BASE_DIR, MANGO_SPEC.model_path)
 MANGO_CLASS_PATH = os.path.join(BASE_DIR, MANGO_SPEC.class_names_path)
-mango_model = load_model(MANGO_MODEL_PATH, compile=False)
+with timed_event("model_load", model=model_identifier("mango")):
+    mango_model = load_model(MANGO_MODEL_PATH, compile=False)
 with open(MANGO_CLASS_PATH, encoding="utf-8") as f:
     mango_class_names = json.load(f)
 
 LEAF_SPEC = get_model_spec("leaf_detector")
 LEAF_DETECTOR_MODEL_PATH = os.path.join(BASE_DIR, LEAF_SPEC.model_path)
 LEAF_DETECTOR_CLASSES_PATH = os.path.join(BASE_DIR, LEAF_SPEC.class_names_path)
-leaf_detector_model = load_model(LEAF_DETECTOR_MODEL_PATH, compile=False)
+with timed_event("model_load", model=model_identifier("leaf_detector")):
+    leaf_detector_model = load_model(LEAF_DETECTOR_MODEL_PATH, compile=False)
 with open(LEAF_DETECTOR_CLASSES_PATH, encoding="utf-8") as f:
     leaf_detector_class_indices = json.load(f)
 
 LEAF_INDEX = leaf_detector_class_indices.get("leaf", 0)
 LEAF_DETECTOR_THRESHOLD = 0.5
 ALLOWED_PLANT_TYPES = {"general", "mango"}
+
+
+@app.get("/api/system/health")
+def system_health():
+    """Expose safe runtime/model health information for deployment diagnostics."""
+    try:
+        from database import db
+        from sqlalchemy import text
+        db.session.execute(text("SELECT 1"))
+        database_status = "connected"
+    except Exception:
+        database_status = "unavailable"
+
+    model_status = {}
+    for key, model in (
+        ("general", general_model),
+        ("mango", mango_model),
+        ("leaf_detector", leaf_detector_model),
+    ):
+        model_status[key] = {
+            "identifier": model_identifier(key),
+            "loaded": model is not None,
+        }
+
+    overall = "ok" if database_status == "connected" and all(item["loaded"] for item in model_status.values()) else "degraded"
+    return jsonify({
+        "status": overall,
+        "database": database_status,
+        "models": model_status,
+        "debug": app.debug,
+    }), (200 if overall == "ok" else 503)
+
+
+@app.get("/api/system/models")
+def system_models():
+    """Return the public model registry without exposing filesystem paths."""
+    return jsonify({
+        key: {
+            "display_name": get_model_spec(key).display_name,
+            "identifier": model_identifier(key),
+        }
+        for key in ("general", "mango", "leaf_detector")
+    })
 
 
 def get_model_and_classes(plant_type):
@@ -162,12 +209,14 @@ def index():
                     is_leaf, leaf_probability_value = is_leaf_image(input_image)
                     leaf_probability = round(float(leaf_probability_value) * 100, 2)
                     if not is_leaf:
+                        log_event("prediction.rejected", reason="not_leaf")
                         print("Rejected by leaf detector — not a leaf image.")
                         error = "This doesn't look like a leaf. Please upload a clear photo of a plant leaf."
                     else:
                         original_image = f"/static/uploads/{unique_name}"
-                        raw_pred = model.predict(input_image, verbose=0)[0]
-                        result = assess_prediction(raw_pred, class_names, model_key, top_k=3)
+                        with timed_event("prediction", model=model_identifier(model_key), plant_type=selected_plant_type):
+                            raw_pred = model.predict(input_image, verbose=0)[0]
+                            result = assess_prediction(raw_pred, class_names, model_key, top_k=3)
                         idx = result["predicted_index"]
                         prediction = result["prediction"]
                         confidence = result["confidence"]
@@ -181,12 +230,26 @@ def index():
                         print(f"Margin (top1 - top2): {prediction_margin}%")
 
                         if not result["accepted"]:
+                            log_event(
+                                "prediction.rejected",
+                                reason="low_confidence_or_margin",
+                                model=result["model_version"],
+                                confidence=confidence,
+                                margin=prediction_margin,
+                            )
                             print("Rejected — confidence or margin below threshold.")
                             error = "The image is unclear, or the disease could not be identified confidently. Please upload a clearer photo of the leaf."
                             prediction = None
                             confidence = None
                             original_image = None
                         else:
+                            log_event(
+                                "prediction.accepted",
+                                model=result["model_version"],
+                                prediction=prediction,
+                                confidence=confidence,
+                                margin=prediction_margin,
+                            )
                             confidence_level = result["confidence_level"]
                             confidence_label = result["confidence_label"]
                             ai_explanation = [
@@ -199,6 +262,7 @@ def index():
                             shap_image = generate_shap(model, class_names, input_image, idx)
 
                 except Exception as exc:
+                    log_event("prediction.error", error_type=type(exc).__name__)
                     print(f"Prediction error: {exc}")
                     error = "Unable to process the image right now. Please try again with a valid leaf image."
 
