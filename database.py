@@ -119,8 +119,11 @@ def _record_scan_from_request(sender, template, context, **extra):
             model_used=model_identifier(model_key) if prediction else None,
             prediction=prediction,
             confidence=float(confidence) if confidence is not None else None,
+            prediction_margin=float(context.get("prediction_margin")) if context.get("prediction_margin") is not None else None,
+            leaf_probability=float(context.get("leaf_probability")) if context.get("leaf_probability") is not None else None,
             prediction_status="completed" if prediction else "rejected",
             error_message=error if not prediction else None,
+            top_predictions=json.dumps(context.get("top_predictions", [])),
             completed_at=datetime.now(timezone.utc),
         )
         db.session.add(scan)
