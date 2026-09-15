@@ -19,7 +19,7 @@ from database import User
 ALGORITHM = "HS256"
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
-MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MiB
+MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
@@ -116,7 +116,13 @@ def configure_security(app):
 
     @app.before_request
     def protect_private_api():
-        if request.path.startswith("/api/scans"):
+        protected = (
+            "/api/scans",
+            "/api/profile",
+            "/api/farms",
+            "/api/crops",
+        )
+        if request.path.startswith(protected):
             user = get_current_user()
             if user is None:
                 return jsonify({"error": "Authentication required"}), 401
