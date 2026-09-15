@@ -11,3 +11,6 @@ sqlalchemy
 python-dotenv
 PyJWT
 Flask-Limiter
+gunicorn
+celery[redis]
+psycopg[binary]
