@@ -27,8 +27,15 @@ limiter = Limiter(key_func=get_remote_address, default_limits=[])
 def configure_security(app):
     """Configure security defaults and register backend authentication routes."""
     secret_key = os.getenv("SECRET_KEY")
-    if not secret_key or len(secret_key) < 32:
-        secret_key = "dev-only-change-this-secret-key-use-a-long-random-value"
+    is_debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    if not secret_key:
+        if is_debug:
+            secret_key = "dev-only-change-this-secret-key-use-a-long-random-value"
+        else:
+            raise RuntimeError("SECRET_KEY must be set when FLASK_DEBUG is disabled")
+    if len(secret_key) < 32:
+        raise RuntimeError("SECRET_KEY must contain at least 32 characters")
+
     app.config["SECRET_KEY"] = secret_key
     app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", MAX_IMAGE_SIZE))
     app.config["MAX_FORM_MEMORY_SIZE"] = int(os.getenv("MAX_FORM_MEMORY_SIZE", 500_000))
