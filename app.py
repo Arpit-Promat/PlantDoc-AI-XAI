@@ -124,6 +124,8 @@ def index():
     original_image = None
     ai_explanation = []
     top_predictions = []
+    prediction_margin = None
+    leaf_probability = None
     selected_plant_type = "general"
 
     if request.method == "POST":
@@ -157,7 +159,8 @@ def index():
                     arr = image.img_to_array(img) / 255.0
                     input_image = np.expand_dims(arr, axis=0)
 
-                    is_leaf, _leaf_probability = is_leaf_image(input_image)
+                    is_leaf, leaf_probability_value = is_leaf_image(input_image)
+                    leaf_probability = round(float(leaf_probability_value) * 100, 2)
                     if not is_leaf:
                         print("Rejected by leaf detector — not a leaf image.")
                         error = "This doesn't look like a leaf. Please upload a clear photo of a plant leaf."
@@ -168,14 +171,14 @@ def index():
                         idx = result["predicted_index"]
                         prediction = result["prediction"]
                         confidence = result["confidence"]
-                        margin = result["margin"]
+                        prediction_margin = result["margin"]
                         top_predictions = result["top_predictions"]
 
                         print(f"Plant type: {selected_plant_type}")
                         print(f"Model: {result['model_version']}")
                         print(f"Prediction: {prediction}")
                         print(f"Confidence: {confidence}%")
-                        print(f"Margin (top1 - top2): {margin}%")
+                        print(f"Margin (top1 - top2): {prediction_margin}%")
 
                         if not result["accepted"]:
                             print("Rejected — confidence or margin below threshold.")
@@ -210,6 +213,8 @@ def index():
         original_image=original_image,
         ai_explanation=ai_explanation,
         top_predictions=top_predictions,
+        prediction_margin=prediction_margin,
+        leaf_probability=leaf_probability,
         selected_plant_type=selected_plant_type,
     )
 
