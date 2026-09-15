@@ -121,6 +121,7 @@ def configure_security(app):
             "/api/profile",
             "/api/farms",
             "/api/crops",
+            "/api/feedback",
         )
         if request.path.startswith(protected):
             user = get_current_user()
