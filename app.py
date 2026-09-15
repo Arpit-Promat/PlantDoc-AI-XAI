@@ -12,6 +12,7 @@ from security import configure_security, limiter, validate_uploaded_image
 from management_api import register_management_routes
 from feedback_api import register_feedback_routes
 from phase9_api import register_phase9_routes
+from phase10_api import register_phase10_routes
 from model_registry import get_model_spec, model_identifier
 from observability import log_event, timed_event
 from prediction_engine import assess_prediction
@@ -23,6 +24,7 @@ configure_security(app)
 register_management_routes(app)
 register_feedback_routes(app)
 register_phase9_routes(app)
+register_phase10_routes(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
