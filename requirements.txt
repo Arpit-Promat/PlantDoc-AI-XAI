@@ -14,3 +14,4 @@ Flask-Limiter
 gunicorn
 celery[redis]
 psycopg[binary]
+twilio
