@@ -9,6 +9,8 @@ from flask import jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Index, text
 
+from model_registry import model_identifier
+
 
 db = SQLAlchemy()
 
@@ -108,12 +110,13 @@ def _record_scan_from_request(sender, template, context, **extra):
         error = context.get("error")
         plant_type = context.get("selected_plant_type", "general")
         current_user = getattr(request, "current_user", None)
+        model_key = "mango" if plant_type == "mango" else "general"
         scan = Scan(
             user_id=current_user.id if current_user else None,
             original_filename=filename,
             image_path=context.get("original_image"),
             plant_type=plant_type,
-            model_used=("mango_model" if plant_type == "mango" else "plantdoc_model") if prediction else None,
+            model_used=model_identifier(model_key) if prediction else None,
             prediction=prediction,
             confidence=float(confidence) if confidence is not None else None,
             prediction_status="completed" if prediction else "rejected",
