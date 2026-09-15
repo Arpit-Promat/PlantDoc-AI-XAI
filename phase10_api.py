@@ -46,3 +46,10 @@ def register_phase10_routes(app):
             return jsonify({"error": "Crop not found"}), 404
 
         return jsonify(build_crop_intelligence(crop.scans, _language()))
+
+    # Product landing/auth features are registered through the existing Phase 10 hook
+    # so the scanner entrypoint and its UI do not need to be changed.
+    from product_auth import register_product_auth_features
+    from mobile_login_api import register_mobile_login_route
+    register_product_auth_features(app)
+    register_mobile_login_route(app)
