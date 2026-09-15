@@ -115,7 +115,9 @@ def _record_scan_from_request(sender, template, context, **extra):
         confidence = context.get("confidence")
         error = context.get("error")
         plant_type = context.get("selected_plant_type", "general")
+        current_user = getattr(request, "current_user", None)
         scan = Scan(
+            user_id=current_user.id if current_user else None,
             original_filename=filename,
             image_path=context.get("original_image"),
             plant_type=plant_type,
@@ -145,12 +147,18 @@ def _register_api_routes(app):
     def scan_history():
         limit = request.args.get("limit", default=20, type=int)
         limit = max(1, min(limit, 100))
-        scans = Scan.query.order_by(Scan.created_at.desc()).limit(limit).all()
+        user_id = request.current_user.id
+        scans = (
+            Scan.query.filter_by(user_id=user_id)
+            .order_by(Scan.created_at.desc())
+            .limit(limit)
+            .all()
+        )
         return jsonify({"count": len(scans), "scans": [scan.to_dict() for scan in scans]})
 
     @app.get("/api/scans/<int:scan_id>")
     def scan_detail(scan_id):
-        scan = db.session.get(Scan, scan_id)
+        scan = Scan.query.filter_by(id=scan_id, user_id=request.current_user.id).first()
         if scan is None:
             return jsonify({"error": "Scan not found"}), 404
         return jsonify(scan.to_dict())
