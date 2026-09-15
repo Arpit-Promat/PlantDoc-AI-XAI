@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 static/uploads/*
 static/shap_output.jpg
+instance/
+.env
+.env.*
+!.env.example
