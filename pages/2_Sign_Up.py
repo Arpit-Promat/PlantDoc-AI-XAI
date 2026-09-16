@@ -1,29 +1,46 @@
 import streamlit as st
-from streamlit_auth import api_post
+from streamlit_native_auth import create_user, issue_otp
 
-st.set_page_config(page_title="Sign Up | ATHARVADRISHTI", page_icon="🌿", layout="centered")
-st.markdown("<style>body{background:#f7fbf8}.card{padding:34px;border:1px solid #dce8dc;border-radius:28px;background:#fff;box-shadow:0 20px 60px rgba(20,80,40,.10)}h1{font-family:Arial,sans-serif}</style>", unsafe_allow_html=True)
+st.set_page_config(page_title="Sign Up | ATHARVADRISHTRI", page_icon="🌿", layout="centered")
+st.markdown("""
+<style>
+.stApp{background:#f7faf5}.block-container{max-width:620px;padding-top:3rem}
+.auth-card{padding:32px;border:1px solid #dce8dc;border-radius:28px;background:#fff;box-shadow:0 20px 60px rgba(20,80,40,.10)}
+.auth-title{font:700 34px Arial,sans-serif;color:#10251a}.muted{color:#6b7e71}.hint{padding:12px 14px;border-radius:12px;background:#eef8ef;color:#2c7443;font-size:12px}
+</style>
+""", unsafe_allow_html=True)
 
-st.markdown("## 🌿 ATHARVADRISHTI")
-st.markdown("# Create your account")
-st.caption("Secure your plant-health workflow with email verification, mobile verification and optional 2FA.")
+st.markdown('<div class="auth-card">', unsafe_allow_html=True)
+st.markdown("## 🌿 ATHARVADRISHTRI")
+st.markdown('<div class="auth-title">Create your account</div>', unsafe_allow_html=True)
+st.markdown('<p class="muted">Build a secure plant-health workspace with verified contact details.</p>', unsafe_allow_html=True)
 
 with st.form("signup"):
     name = st.text_input("Full name")
     email = st.text_input("Email address")
     phone = st.text_input("Mobile number", placeholder="+919876543210")
     password = st.text_input("Password", type="password")
-    submitted = st.form_submit_button("Create account", use_container_width=True)
+    confirm = st.text_input("Confirm password", type="password")
+    submitted = st.form_submit_button("Create account", use_container_width=True, type="primary")
 
 if submitted:
-    response, data = api_post("/api/product-auth/register", {"name": name, "email": email, "phone": phone, "password": password})
-    if response is not None and response.ok:
-        st.session_state["verify_email"] = data.get("email", email)
-        st.session_state["verify_phone"] = data.get("phone", phone)
-        st.success("Account created. Verification codes have been processed.")
-        st.switch_page("pages/3_Verify.py")
+    if password != confirm:
+        st.error("Passwords do not match.")
     else:
-        st.error(data.get("error", "Unable to create account."))
+        user, error = create_user(name, email, phone, password)
+        if error:
+            st.error(error)
+        else:
+            issue_otp(user["id"], "email_verification", "email", user["email"])
+            issue_otp(user["id"], "mobile_verification", "sms", user["phone"])
+            st.session_state["verify_email"] = user["email"]
+            st.session_state["verify_phone"] = user["phone"]
+            st.success("Account created. Verification codes have been generated.")
+            if st.session_state.get("dev_last_otp"):
+                st.info("Development OTP mode is enabled; check the latest generated code in the app log or secret-controlled demo flow.")
+            st.switch_page("pages/3_Verify.py")
 
 if st.button("Back to home", use_container_width=True):
     st.switch_page("streamlit_app.py")
+st.markdown('<div class="hint">🛡️ You must verify both email and mobile before login. OTP-based 2FA can then be enabled.</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
