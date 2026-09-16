@@ -15,3 +15,4 @@ gunicorn
 celery[redis]
 psycopg[binary]
 twilio
+requests
