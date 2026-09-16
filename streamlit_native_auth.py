@@ -1,4 +1,4 @@
-"""Streamlit-native authentication for ATHARVADRISHTI.
+"""Streamlit-native authentication for ATHARVADRISHTRI.
 
 No Flask/Render dependency is used by the Streamlit login flow.
 For deployed persistence, configure DATABASE_URL to a hosted PostgreSQL database.
@@ -47,7 +47,6 @@ def _connect():
     if _is_postgres():
         import psycopg
         return psycopg.connect(database_url())
-
     db_path = Path(_secret("SQLITE_PATH", "instance/streamlit_auth.db"))
     db_path.parent.mkdir(parents=True, exist_ok=True)
     return sqlite3.connect(str(db_path), check_same_thread=False)
@@ -55,6 +54,10 @@ def _connect():
 
 def _placeholder() -> str:
     return "%s" if _is_postgres() else "?"
+
+
+def _bool_value(value: bool) -> str:
+    return "TRUE" if value else "FALSE"
 
 
 def ensure_schema() -> None:
@@ -158,7 +161,6 @@ def _row_to_user(row) -> dict[str, Any] | None:
 
 def get_user_by_identity(identity: str) -> dict[str, Any] | None:
     ensure_schema()
-    identity = str(identity or "").strip()
     email = normalize_email(identity)
     phone = normalize_phone(identity)
     ph = _placeholder()
@@ -198,14 +200,17 @@ def create_user(name: str, email: str, phone: str, password: str) -> tuple[dict[
             ).fetchone()
             if existing:
                 return None, "An account with this email or mobile number already exists."
-            cur = conn.execute(
-                f"INSERT INTO streamlit_users (name,email,phone,password_hash,email_verified,mobile_verified,two_factor_enabled,two_factor_channel,created_at) VALUES ({ph},{ph},{ph},{ph},0,0,0,'email',{ph})",
-                (name, email, phone, generate_password_hash(password), created_at),
-            )
-            user_id = cur.lastrowid
             if _is_postgres():
-                row = conn.execute("SELECT id,name,email,phone,password_hash,email_verified,mobile_verified,two_factor_enabled,two_factor_channel FROM streamlit_users WHERE email=%s", (email,)).fetchone()
+                row = conn.execute(
+                    f"INSERT INTO streamlit_users (name,email,phone,password_hash) VALUES ({ph},{ph},{ph},{ph}) RETURNING id,name,email,phone,password_hash,email_verified,mobile_verified,two_factor_enabled,two_factor_channel",
+                    (name, email, phone, generate_password_hash(password)),
+                ).fetchone()
             else:
+                conn.execute(
+                    f"INSERT INTO streamlit_users (name,email,phone,password_hash,email_verified,mobile_verified,two_factor_enabled,two_factor_channel,created_at) VALUES ({ph},{ph},{ph},{ph},0,0,0,'email',{ph})",
+                    (name, email, phone, generate_password_hash(password), created_at),
+                )
+                user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
                 row = conn.execute("SELECT id,name,email,phone,password_hash,email_verified,mobile_verified,two_factor_enabled,two_factor_channel FROM streamlit_users WHERE id=?", (user_id,)).fetchone()
             conn.commit()
     except Exception as exc:
@@ -225,7 +230,7 @@ def _make_otp() -> str:
 def _deliver_email(destination: str, subject: str, body: str) -> None:
     host = _secret("SMTP_HOST")
     if not host:
-        print(f"ATHARVADRISHTI EMAIL DEV FALLBACK -> {destination}: {body}")
+        print(f"ATHARVADRISHTRI EMAIL DEV FALLBACK -> {destination}: {body}")
         return
     port = int(_secret("SMTP_PORT", "587"))
     username = _secret("SMTP_USERNAME")
@@ -278,13 +283,11 @@ def issue_otp(user_id: int, purpose: str, channel: str, destination: str) -> str
         "login_2fa": "Your ATHARVADRISHTRI security code",
         "two_factor_setup": "Set up ATHARVADRISHTRI two-factor authentication",
     }.get(purpose, "Your ATHARVADRISHTRI verification code")
-    message = f"Your ATHARVADRISHTRI verification code is {code}. It expires in {OTP_TTL_MINUTES} minutes."
+    body = f"Your ATHARVADRISHTRI verification code is {code}. It expires in {OTP_TTL_MINUTES} minutes."
     if channel == "email":
-        _deliver_email(destination, subject, message)
+        _deliver_email(destination, subject, body)
     else:
-        _deliver_sms(destination, message)
-
-    # Optional local/demo convenience. Never enable by default on a shared deployment.
+        _deliver_sms(destination, body)
     if _secret("AUTH_DEV_SHOW_OTP", "0") == "1":
         st.session_state["dev_last_otp"] = code
     return code
@@ -307,12 +310,14 @@ def verify_otp(user_id: int, purpose: str, code: str, channel: str | None = None
         if row is None:
             return False
         challenge_id, code_hash, expires_at_raw, attempts = row
-        expires_at = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
-        attempts = int(attempts or 0)
-        if expires_at < _now() or attempts >= MAX_OTP_ATTEMPTS:
+        if isinstance(expires_at_raw, datetime):
+            expires_at = expires_at_raw if expires_at_raw.tzinfo else expires_at_raw.replace(tzinfo=timezone.utc)
+        else:
+            expires_at = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
+        if expires_at < _now() or int(attempts or 0) >= MAX_OTP_ATTEMPTS:
             return False
         conn.execute(f"UPDATE streamlit_auth_challenges SET attempts=attempts+1 WHERE id={ph}", (challenge_id,))
-        if not secrets.compare_digest(code_hash, _hash_otp(code)):
+        if not secrets.compare_digest(code_hash, _hash_otp(str(code or ""))):
             conn.commit()
             return False
         conn.execute(f"UPDATE streamlit_auth_challenges SET used_at={ph} WHERE id={ph}", (_now().isoformat(), challenge_id))
@@ -322,15 +327,17 @@ def verify_otp(user_id: int, purpose: str, code: str, channel: str | None = None
 
 def mark_email_verified(user_id: int) -> None:
     ph = _placeholder()
+    value = "TRUE" if _is_postgres() else "1"
     with _connect() as conn:
-        conn.execute(f"UPDATE streamlit_users SET email_verified=1 WHERE id={ph}", (user_id,))
+        conn.execute(f"UPDATE streamlit_users SET email_verified={value} WHERE id={ph}", (user_id,))
         conn.commit()
 
 
 def mark_mobile_verified(user_id: int) -> None:
     ph = _placeholder()
+    value = "TRUE" if _is_postgres() else "1"
     with _connect() as conn:
-        conn.execute(f"UPDATE streamlit_users SET mobile_verified=1 WHERE id={ph}", (user_id,))
+        conn.execute(f"UPDATE streamlit_users SET mobile_verified={value} WHERE id={ph}", (user_id,))
         conn.commit()
 
 
@@ -343,8 +350,9 @@ def set_2fa_channel(user_id: int, channel: str) -> None:
 
 def set_2fa_enabled(user_id: int, enabled: bool) -> None:
     ph = _placeholder()
+    value = _bool_value(enabled) if _is_postgres() else ("1" if enabled else "0")
     with _connect() as conn:
-        conn.execute(f"UPDATE streamlit_users SET two_factor_enabled={ph} WHERE id={ph}", (1 if enabled else 0, user_id))
+        conn.execute(f"UPDATE streamlit_users SET two_factor_enabled={value} WHERE id={ph}", (user_id,))
         conn.commit()
 
 
@@ -361,11 +369,12 @@ def session_login(user: dict[str, Any]) -> None:
     st.session_state["authenticated"] = True
     st.session_state["auth_user_id"] = user["id"]
     st.session_state["auth_user"] = user
-    st.session_state.pop("pending_2fa", None)
+    st.session_state.pop("pending_2fa_user_id", None)
+    st.session_state.pop("login_2fa_channel", None)
 
 
 def session_logout() -> None:
-    for key in ["authenticated", "auth_user_id", "auth_user", "pending_2fa", "dev_last_otp"]:
+    for key in ["authenticated", "auth_user_id", "auth_user", "pending_2fa_user_id", "login_2fa_channel", "dev_last_otp"]:
         st.session_state.pop(key, None)
 
 
