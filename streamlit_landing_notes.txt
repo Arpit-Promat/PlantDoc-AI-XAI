@@ -1,0 +1,1 @@
+Landing page is now the Streamlit entrypoint; original scanner is preserved under pages/1_AI_Scanner.py.
