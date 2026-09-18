@@ -8,6 +8,7 @@ from PIL import Image
 from tensorflow.keras.models import load_model
 
 from disease_guidance import get_disease_guidance
+from decision_support import condition_family
 
 from streamlit_native_auth import current_user
 from streamlit_scan_history import make_session_key, save_scan
@@ -894,22 +895,82 @@ with prediction_col:
 
 
 # ============================================================
-# DISEASE INFORMATION — OCCURRENCE + PREVENTION
+# PLANT HEALTH INFORMATION — OCCURRENCE + PREVENTION
 # ============================================================
 
 guidance = get_disease_guidance(predicted_name)
+healthy_result = "healthy" in predicted_name.lower()
+family = condition_family(predicted_name)
+
+FAMILY_CONTEXT = {
+    "healthy-leaf classification": (
+        "No disease pattern was classified from this image.",
+        "No disease spread pathway is implied by a healthy prediction.",
+        "Continue normal monitoring because a single image cannot represent the whole plant."
+    ),
+    "fungal-like leaf disease pattern": (
+        "Usually associated with fungal pathogens that colonize susceptible plant tissue.",
+        "Depending on the condition, spores can spread through wind, rain splash, wet foliage or infected plant residue.",
+        "Humidity, prolonged leaf wetness, dense canopies and infected debris can increase disease pressure."
+    ),
+    "rust-like fungal pattern": (
+        "Usually associated with rust fungi that produce spores on susceptible plant tissue.",
+        "Spores can move by wind and, for some rusts, infection depends on moisture and alternate host plants.",
+        "Cool/wet periods, leaf wetness and susceptible new growth can favor infection."
+    ),
+    "leaf-spot pattern": (
+        "Often associated with pathogens that produce localized spots or lesions on leaf tissue.",
+        "Spread may occur through rain splash, irrigation water, wind-driven moisture or contact with infected material.",
+        "Wet foliage, humidity and poor airflow can increase the chance of new spots developing."
+    ),
+    "bacterial-spot-like pattern": (
+        "Usually associated with bacterial infection of leaf or fruit tissue.",
+        "Bacteria can spread through rain splash, contaminated plant material, wounds, seed or handling.",
+        "Warm, humid weather and repeated leaf wetness can favor bacterial spread."
+    ),
+    "viral-pattern classification": (
+        "Associated with a plant virus affecting leaf development and function.",
+        "Spread depends on the virus and may involve insect vectors, infected planting material or mechanical plant-to-plant contact.",
+        "Vector pressure, infected plants and repeated contact can increase transmission risk."
+    ),
+    "mite-related visual pattern": (
+        "Associated with feeding damage from plant-feeding mites rather than a fungal or bacterial infection.",
+        "Mites can move between nearby leaves and plants and may build up rapidly under favorable weather conditions.",
+        "Hot, dry conditions and plant water stress can favor mite population growth."
+    ),
+    "rot / fungal-like lesion pattern": (
+        "Often associated with fungi or other pathogens that colonize damaged or susceptible plant tissue.",
+        "Inoculum can persist in infected tissue or residue and spread through moisture, spores or plant-to-plant contact.",
+        "Wet conditions, damaged tissue and poor sanitation can increase risk."
+    ),
+    "blight-like leaf pattern": (
+        "Usually associated with pathogens that can expand rapidly across susceptible leaf tissue.",
+        "Spread may occur through spores or infected water/residue, depending on the specific disease.",
+        "Prolonged moisture, suitable temperature and dense foliage can accelerate spread."
+    ),
+    "visual plant-condition classification": (
+        "The model detected a visual plant-condition pattern, but the current label does not have a specific causal profile.",
+        "The exact spread pathway depends on the confirmed cause.",
+        "Use repeated observations and crop-specific expert guidance to identify the underlying problem."
+    ),
+}
+
+occurrence_context = FAMILY_CONTEXT.get(
+    family,
+    FAMILY_CONTEXT["visual plant-condition classification"]
+)
 
 st.write("")
 
 st.markdown(
-    '<div class="section-title">🧬 Disease Information — How it occurs & How to prevent it</div>',
+    '<div class="section-title">🌱 Plant Health Information — How it occurs & How to prevent it</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
     '<div class="section-subtitle">'
-    'Educational information linked to the model\'s predicted condition. '
-    'It explains common causal pathways and preventive practices; it is not a confirmed diagnosis or a treatment prescription.'
+    'A concise explanation of the AI result, common occurrence pathway and practical prevention steps. '
+    'This is educational decision support, not a confirmed biological diagnosis or treatment prescription.'
     '</div>',
     unsafe_allow_html=True
 )
@@ -918,14 +979,33 @@ info_col1, info_col2 = st.columns(2)
 
 with info_col1:
     with st.container(border=True):
-        st.markdown("### 🔬 How does it occur?")
-        st.write(guidance["how_it_occurs"])
+        if healthy_result:
+            st.markdown("### ✅ What does this result mean?")
+            st.write(
+                "The AI classified the uploaded leaf as **healthy**. "
+                "No disease-related pattern was strong enough to become the top prediction for this image."
+            )
+            st.markdown("### 🔎 What should you do?")
+            st.markdown("✅ Continue routine monitoring of new and older leaves.")
+            st.markdown("✅ Maintain good sanitation, airflow and appropriate irrigation.")
+            st.markdown("✅ Re-scan if you notice spots, discoloration, curling or other changes.")
+        else:
+            st.markdown("### 🔬 How does it occur?")
+            st.write(guidance["how_it_occurs"])
+            st.markdown("### 🌦️ What can favor its spread?")
+            st.write(occurrence_context[2])
+            st.markdown("### 🧭 Common spread pathway")
+            st.write(occurrence_context[1])
 
 with info_col2:
     with st.container(border=True):
         st.markdown("### 🛡️ Prevention")
         for step in guidance["prevention"]:
             st.markdown(f"✅ {step}")
+
+        if not healthy_result:
+            st.markdown("### 🧪 Common cause / pattern")
+            st.write(occurrence_context[0])
 
 if guidance.get("note"):
     st.info(f"ℹ️ {guidance['note']}")
