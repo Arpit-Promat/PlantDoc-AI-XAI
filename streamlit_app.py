@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_auth import api_post
 
 st.set_page_config(
-    page_title="ATHARVADRISHTI | Intelligent Plant Health",
+    page_title="ATHARVADRISHTI — An Intelligent and Explainable Plant Health Analysis System",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -176,7 +176,7 @@ with nav:
     n1, n2, n3, n4, n5 = st.columns([3.5, 1.0, 1.1, 1.25, 1.15], gap="small")
     with n1:
         st.markdown(
-            '<div class="brand-wrap"><div class="brand-mark">🌿</div><div><div class="brand-title">ATHARVADRISHTI</div><div class="brand-sub">AI FOR HEALTHIER CROPS</div></div></div>',
+            '<div class="brand-wrap"><div class="brand-mark">🌿</div><div><div class="brand-title">ATHARVADRISHTI</div><div class="brand-sub">AN INTELLIGENT AND EXPLAINABLE PLANT HEALTH ANALYSIS SYSTEM</div></div></div>',
             unsafe_allow_html=True,
         )
     with n2:
@@ -201,9 +201,9 @@ with nav:
 left, right = st.columns([1.02, .98], gap="large")
 with left:
     st.markdown('<div class="hero-copy">', unsafe_allow_html=True)
-    st.markdown('<span class="eyebrow">AI-POWERED PLANT DISEASE DETECTION</span>', unsafe_allow_html=True)
+    st.markdown('<span class="eyebrow">ATHARVADRISHTI · INTELLIGENT &amp; EXPLAINABLE PLANT HEALTH</span>', unsafe_allow_html=True)
     st.markdown('<div class="hero-title">Smarter Insights for <span>Healthier Crops</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-text">ATHARVADRISHTI uses advanced AI to detect plant diseases, provide expert guidance and help farmers make better decisions for higher yield and healthier crops.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-text">ATHARVADRISHTI — An Intelligent and Explainable Plant Health Analysis System uses advanced AI to analyze plant health, explain visual evidence and help users make better crop-health decisions.</div>', unsafe_allow_html=True)
     m1, m2, m3 = st.columns(3)
     with m1: st.markdown('<div class="mini-feature"><b>🌿</b><span>Detect Diseases<br>with AI</span></div>', unsafe_allow_html=True)
     with m2: st.markdown('<div class="mini-feature"><b>🛡</b><span>Get Expert<br>Guidance</span></div>', unsafe_allow_html=True)
@@ -298,4 +298,4 @@ for c, (num, title, desc) in zip(steps, step_data):
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="green-band"><h2>Together for a Greener Tomorrow</h2><p>Better technology. Healthier crops. Stronger farmers.</p></div>', unsafe_allow_html=True)
-st.markdown('<div class="footer">© 2026 ATHARVADRISHTI · Intelligent Plant Health Analysis</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">© 2026 ATHARVADRISHTI · An Intelligent and Explainable Plant Health Analysis System</div>', unsafe_allow_html=True)
