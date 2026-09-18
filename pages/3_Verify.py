@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_native_auth import get_user_by_email, verify_otp, mark_email_verified, mark_mobile_verified, issue_otp, set_2fa_channel, set_2fa_enabled
 
-st.set_page_config(page_title="Verify Account | ATHARVADRISHTRI", page_icon="🌿", layout="centered")
+st.set_page_config(page_title="Verify Account | ATHARVADRISHTI", page_icon="🌿", layout="centered")
 st.markdown("""
 <style>
 .stApp{background:#f7faf5}.block-container{max-width:720px;padding-top:3rem}
@@ -11,7 +11,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="card">', unsafe_allow_html=True)
-st.markdown("## 🌿 ATHARVADRISHTRI")
+st.markdown("## 🌿 ATHARVADRISHTI")
 st.markdown('<div class="title">Verify your account</div>', unsafe_allow_html=True)
 st.markdown('<p class="muted">Complete email and mobile verification before secure login.</p>', unsafe_allow_html=True)
 
