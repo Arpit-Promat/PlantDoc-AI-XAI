@@ -7,6 +7,9 @@ import shap
 from PIL import Image
 from tensorflow.keras.models import load_model
 
+from streamlit_native_auth import current_user
+from streamlit_scan_history import make_session_key, save_scan
+
 
 # ============================================================
 # PAGE CONFIG
@@ -692,6 +695,38 @@ confidence = (
         predictions[predicted_index]
     ) * 100
 )
+
+# Save one history record per uploaded image for authenticated users.
+# This is backend persistence only; the existing scanner UI is unchanged.
+try:
+    authenticated_user = current_user()
+    if authenticated_user:
+        scan_session_key = make_session_key(
+            uploaded_file.getvalue(),
+            uploaded_file.name,
+            predicted_name,
+        )
+        if st.session_state.get("last_history_scan_key") != scan_session_key:
+            save_scan(
+                user_id=int(authenticated_user["id"]),
+                session_key=scan_session_key,
+                filename=uploaded_file.name,
+                prediction=predicted_name,
+                confidence=round(confidence, 2),
+                status="completed",
+                top_predictions=[
+                    {
+                        "rank": rank,
+                        "prediction": clean_class_name(class_names[int(index)]),
+                        "confidence": round(float(predictions[int(index)]) * 100, 2),
+                    }
+                    for rank, index in enumerate(top_indices, start=1)
+                ],
+            )
+            st.session_state["last_history_scan_key"] = scan_session_key
+except Exception:
+    # A history-storage failure must never block the AI scanner.
+    pass
 
 
 # ============================================================
