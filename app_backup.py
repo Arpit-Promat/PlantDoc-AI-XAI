@@ -20,7 +20,7 @@ app = Flask(__name__)
 # =========================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "models", "plantdoc_model.keras")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "plantdoc_model.keras")  # ATHARVADRISHTI trained model artifact
 CLASS_PATH = os.path.join(BASE_DIR, "models", "class_names.json")
 
 model = load_model(MODEL_PATH)
