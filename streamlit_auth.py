@@ -47,7 +47,13 @@ def api_post(path: str, payload: dict):
             issue_otp(user["id"], "mobile_verification", "sms", user["phone"])
         except Exception as exc:
             return _response(False, 500), {"error": f"Account created but verification delivery failed: {exc}"}
-        return _response(True, 201), {"id": user["id"], "name": user["name"], "email": user["email"], "phone": user["phone"], "verification_required": True}
+        return _response(True, 201), {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "phone": user["phone"],
+            "verification_required": True,
+        }
 
     if path == "/api/product-auth/login":
         identity = str(data.get("email", "")).strip()
@@ -68,7 +74,13 @@ def api_post(path: str, payload: dict):
             destination = user["email"] if channel == "email" else user["phone"]
             issue_otp(user["id"], "login_2fa", channel, destination)
             st.session_state["login_identity"] = identity
-            return _response(True, 200), {"two_factor_required": True, "channel": channel, "expires_in": 600}
+            st.session_state["pending_2fa_user_id"] = user["id"]
+            st.session_state["login_2fa_channel"] = channel
+            return _response(True, 200), {
+                "two_factor_required": True,
+                "channel": channel,
+                "expires_in": 600,
+            }
         session_login(user)
         return _response(True, 200), {"access_token": "streamlit-session", "token_type": "Session"}
 
@@ -103,7 +115,11 @@ def api_post(path: str, payload: dict):
         identity = str(data.get("email", "")).strip()
         user = get_user_by_identity(identity)
         channel = st.session_state.get("login_2fa_channel", user["two_factor_channel"] if user else "email")
-        ok = bool(user and st.session_state.get("pending_2fa_user_id") == user["id"] and verify_otp(user["id"], "login_2fa", data.get("code", ""), channel))
+        ok = bool(
+            user
+            and st.session_state.get("pending_2fa_user_id") == user["id"]
+            and verify_otp(user["id"], "login_2fa", data.get("code", ""), channel)
+        )
         if ok:
             session_login(user)
             return _response(True), {"access_token": "streamlit-session", "token_type": "Session"}
