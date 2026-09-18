@@ -7,6 +7,8 @@ import shap
 from PIL import Image
 from tensorflow.keras.models import load_model
 
+from disease_guidance import get_disease_guidance
+
 from streamlit_native_auth import current_user
 from streamlit_scan_history import make_session_key, save_scan
 
@@ -890,6 +892,43 @@ with prediction_col:
                     f"**{score:.2f}%**"
                 )
 
+
+# ============================================================
+# DISEASE INFORMATION — OCCURRENCE + PREVENTION
+# ============================================================
+
+guidance = get_disease_guidance(predicted_name)
+
+st.write("")
+
+st.markdown(
+    '<div class="section-title">🧬 Disease Information — How it occurs & How to prevent it</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="section-subtitle">'
+    'Educational information linked to the model\'s predicted condition. '
+    'It explains common causal pathways and preventive practices; it is not a confirmed diagnosis or a treatment prescription.'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+info_col1, info_col2 = st.columns(2)
+
+with info_col1:
+    with st.container(border=True):
+        st.markdown("### 🔬 How does it occur?")
+        st.write(guidance["how_it_occurs"])
+
+with info_col2:
+    with st.container(border=True):
+        st.markdown("### 🛡️ Prevention")
+        for step in guidance["prevention"]:
+            st.markdown(f"✅ {step}")
+
+if guidance.get("note"):
+    st.info(f"ℹ️ {guidance['note']}")
 
 # ============================================================
 # EXPLAINABLE AI
