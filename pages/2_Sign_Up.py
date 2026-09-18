@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_native_auth import create_user, issue_otp
 
-st.set_page_config(page_title="Sign Up | ATHARVADRISHTRI", page_icon="🌿", layout="centered")
+st.set_page_config(page_title="Sign Up | ATHARVADRISHTI", page_icon="🌿", layout="centered")
 st.markdown("""
 <style>
 .stApp{background:#f7faf5}.block-container{max-width:620px;padding-top:3rem}
@@ -11,7 +11,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-st.markdown("## 🌿 ATHARVADRISHTRI")
+st.markdown("## 🌿 ATHARVADRISHTI")
 st.markdown('<div class="auth-title">Create your account</div>', unsafe_allow_html=True)
 st.markdown('<p class="muted">Build a secure plant-health workspace with verified contact details.</p>', unsafe_allow_html=True)
 
