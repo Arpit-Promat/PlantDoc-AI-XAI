@@ -173,7 +173,7 @@ st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
 nav = st.container()
 with nav:
     st.markdown('<div class="header-shell">', unsafe_allow_html=True)
-    n1, n2, n3, n4, n5 = st.columns([3.5, 1.0, 1.1, 1.25, 1.15], gap="small")
+    n1, n2, n3, n4, n5, n6 = st.columns([3.0, .9, 1.0, 1.0, 1.2, 1.0], gap="small")
     with n1:
         st.markdown(
             '<div class="brand-wrap"><div class="brand-mark">🌿</div><div><div class="brand-title">ATHARVADRISHTI</div><div class="brand-sub">AN INTELLIGENT AND EXPLAINABLE PLANT HEALTH ANALYSIS SYSTEM</div></div></div>',
@@ -189,6 +189,12 @@ with nav:
         if st.button("🔐 Login", use_container_width=True, key="nav_login"):
             st.session_state["jump_login"] = True
     with n5:
+        if st.button("📊 Dashboard", use_container_width=True, key="nav_dashboard"):
+            if st.session_state.get("authenticated"):
+                st.switch_page("pages/5_Health_Dashboard.py")
+            else:
+                st.switch_page("pages/1_Login.py")
+    with n6:
         mode_label = "☾ Dark" if not is_dark else "☀ Light"
         if st.button(mode_label, use_container_width=True, key="nav_theme"):
             st.session_state["landing_theme"] = "dark" if not is_dark else "light"
