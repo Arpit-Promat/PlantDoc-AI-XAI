@@ -13,7 +13,7 @@ from tensorflow.keras.models import load_model
 # ============================================================
 
 st.set_page_config(
-    page_title="PlantDoc AI",
+    page_title="ATHARVADRISHTI — An Intelligent and Explainable Plant Health Analysis System",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -200,10 +200,10 @@ st.markdown("""
 # ============================================================
 
 st.markdown("""
-<div class="hero-title">🌿 PlantDoc <span>AI</span></div>
+<div class="hero-title">🌿 ATHARVADRISHTI</div>
 
 <div class="hero-subtitle">
-AI-Based Plant Disease Detection & Explainable Artificial Intelligence
+An Intelligent and Explainable Plant Health Analysis System
 </div>
 
 <div class="badge-row">
@@ -591,7 +591,7 @@ st.markdown(
 
 st.markdown(
     '<div class="section-subtitle">'
-    'Upload a clear leaf image and let PlantDoc AI identify the most likely plant condition and explain the visual regions that influenced the prediction.'
+    'Upload a clear leaf image and let ATHARVADRISHTI identify the most likely plant condition and explain the visual regions that influenced the prediction.'
     '</div>',
     unsafe_allow_html=True
 )
@@ -671,7 +671,7 @@ image_array = preprocess_image(
 # ============================================================
 
 with st.spinner(
-    "🧠 PlantDoc AI is analyzing the leaf..."
+    "🧠 ATHARVADRISHTI is analyzing the leaf..."
 ):
 
     predictions, top_indices = get_predictions(
@@ -1138,7 +1138,7 @@ with st.expander(
 
     st.write(
         """
-        PlantDoc AI provides an AI-based visual classification
+        ATHARVADRISHTI provides an AI-based visual classification
         of plant leaf images.
 
         The highlighted regions show areas that influenced
@@ -1160,8 +1160,8 @@ with st.expander(
 st.markdown(
     """
     <div class="footer">
-        🌿 <strong>PlantDoc AI</strong><br>
-        AI-Based Plant Disease Detection • Deep Learning • SHAP Explainable AI<br>
+        🌿 <strong>ATHARVADRISHTI</strong><br>
+        Intelligent Plant Health Analysis • Deep Learning • SHAP Explainable AI<br>
         Major Project • CSE / AI & ML 💚
     </div>
     """,
