@@ -1,4 +1,4 @@
-"""Streamlit-native authentication for ATHARVADRISHTRI.
+"""Streamlit-native authentication for ATHARVADRISHTI.
 
 No Flask/Render dependency is used by the Streamlit login flow.
 For deployed persistence, configure DATABASE_URL to a hosted PostgreSQL database.
@@ -230,7 +230,7 @@ def _make_otp() -> str:
 def _deliver_email(destination: str, subject: str, body: str) -> None:
     host = _secret("SMTP_HOST")
     if not host:
-        print(f"ATHARVADRISHTRI EMAIL DEV FALLBACK -> {destination}: {body}")
+        print(f"ATHARVADRISHTI EMAIL DEV FALLBACK -> {destination}: {body}")
         return
     port = int(_secret("SMTP_PORT", "587"))
     username = _secret("SMTP_USERNAME")
@@ -254,7 +254,7 @@ def _deliver_sms(destination: str, body: str) -> None:
     token = _secret("TWILIO_AUTH_TOKEN")
     from_number = _secret("TWILIO_FROM_NUMBER")
     if not (sid and token and from_number):
-        print(f"ATHARVADRISHTRI SMS DEV FALLBACK -> {destination}: {body}")
+        print(f"ATHARVADRISHTI SMS DEV FALLBACK -> {destination}: {body}")
         return
     from twilio.rest import Client
     Client(sid, token).messages.create(body=body, from_=from_number, to=destination)
@@ -278,12 +278,12 @@ def issue_otp(user_id: int, purpose: str, channel: str, destination: str) -> str
         conn.commit()
 
     subject = {
-        "email_verification": "Verify your ATHARVADRISHTRI email",
-        "mobile_verification": "Verify your ATHARVADRISHTRI mobile number",
-        "login_2fa": "Your ATHARVADRISHTRI security code",
-        "two_factor_setup": "Set up ATHARVADRISHTRI two-factor authentication",
-    }.get(purpose, "Your ATHARVADRISHTRI verification code")
-    body = f"Your ATHARVADRISHTRI verification code is {code}. It expires in {OTP_TTL_MINUTES} minutes."
+        "email_verification": "Verify your ATHARVADRISHTI email",
+        "mobile_verification": "Verify your ATHARVADRISHTI mobile number",
+        "login_2fa": "Your ATHARVADRISHTI security code",
+        "two_factor_setup": "Set up ATHARVADRISHTI two-factor authentication",
+    }.get(purpose, "Your ATHARVADRISHTI verification code")
+    body = f"Your ATHARVADRISHTI verification code is {code}. It expires in {OTP_TTL_MINUTES} minutes."
     if channel == "email":
         _deliver_email(destination, subject, body)
     else:
