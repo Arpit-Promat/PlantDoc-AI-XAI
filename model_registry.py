@@ -15,7 +15,7 @@ class ModelSpec:
 MODEL_REGISTRY = {
     "general": ModelSpec(
         key="general",
-        display_name="PlantDoc General Classifier",
+        display_name="ATHARVADRISHTI General Classifier",
         version="1.0.0",
         model_path="models/plantdoc_model.keras",
         class_names_path="models/class_names.json",
