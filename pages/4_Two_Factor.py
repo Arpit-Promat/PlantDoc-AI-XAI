@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_native_auth import get_user_by_identity, verify_otp, session_login
 
-st.set_page_config(page_title="Two-Factor Authentication | ATHARVADRISHTRI", page_icon="🛡", layout="centered")
+st.set_page_config(page_title="Two-Factor Authentication | ATHARVADRISHTI", page_icon="🛡", layout="centered")
 st.markdown("""
 <style>
 .stApp{background:#f7faf5}.block-container{max-width:620px;padding-top:3rem}
@@ -11,7 +11,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="card">', unsafe_allow_html=True)
-st.markdown("## 🛡️ ATHARVADRISHTRI")
+st.markdown("## 🛡️ ATHARVADRISHTI")
 st.markdown('<div class="title">Two-Factor Authentication</div>', unsafe_allow_html=True)
 channel = st.session_state.get("login_2fa_channel", "email")
 st.markdown(f'<p class="muted">Enter the OTP sent to your verified {"email" if channel == "email" else "mobile number"}.</p>', unsafe_allow_html=True)
