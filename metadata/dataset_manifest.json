@@ -1,0 +1,420 @@
+{
+  "project": "ATHARVADRISHTI",
+  "version": "v1.0",
+  "repo": "Arpit-Promat/PlantDoc-AI-XAI",
+  "target_unique_images": 70200,
+  "tracks": {
+    "leaf_condition": {
+      "images": 53200,
+      "classes": 76,
+      "target_per_class": 700
+    },
+    "hard_negatives": {
+      "images": 5000,
+      "labels": [
+        "plant",
+        "not_plant"
+      ],
+      "purpose": "rejection layer"
+    },
+    "fruit": {
+      "images": 8000,
+      "crops": [
+        "Apple",
+        "Banana",
+        "Citrus",
+        "Guava",
+        "Mango",
+        "Papaya"
+      ],
+      "status": "plant-part/crop/health foundation; disease subclasses require label audit"
+    },
+    "flower": {
+      "images": 4000,
+      "labels": [
+        "flower",
+        "not_flower",
+        "uncertain"
+      ],
+      "status": "plant-part recognition first; disease subclasses require curated verified sources"
+    }
+  },
+  "plant_parts": [
+    "leaf",
+    "fruit",
+    "flower",
+    "whole_plant"
+  ],
+  "crops": [
+    "Apple",
+    "Blueberry",
+    "Cherry",
+    "Corn",
+    "Grape",
+    "Orange/Citrus",
+    "Peach",
+    "Bell Pepper",
+    "Potato",
+    "Raspberry",
+    "Soybean",
+    "Squash",
+    "Strawberry",
+    "Tomato",
+    "Mango",
+    "Cashew",
+    "Cassava",
+    "Chilli",
+    "Cotton",
+    "Groundnut",
+    "Rice",
+    "Wheat",
+    "Papaya",
+    "Sugarcane"
+  ],
+  "leaf_class_count": 76,
+  "leaf_target_images": 53200,
+  "target_per_leaf_class": 700,
+  "leaf_classes": [
+    [
+      "Apple",
+      "Healthy"
+    ],
+    [
+      "Apple",
+      "Apple Scab"
+    ],
+    [
+      "Apple",
+      "Black Rot"
+    ],
+    [
+      "Apple",
+      "Cedar Apple Rust"
+    ],
+    [
+      "Blueberry",
+      "Healthy"
+    ],
+    [
+      "Cherry",
+      "Healthy"
+    ],
+    [
+      "Cherry",
+      "Powdery Mildew"
+    ],
+    [
+      "Corn",
+      "Healthy"
+    ],
+    [
+      "Corn",
+      "Cercospora/Gray Leaf Spot"
+    ],
+    [
+      "Corn",
+      "Common Rust"
+    ],
+    [
+      "Corn",
+      "Northern Leaf Blight"
+    ],
+    [
+      "Corn",
+      "Leaf Spot"
+    ],
+    [
+      "Corn",
+      "Maize Streak Virus"
+    ],
+    [
+      "Grape",
+      "Healthy"
+    ],
+    [
+      "Grape",
+      "Black Rot"
+    ],
+    [
+      "Grape",
+      "Esca/Black Measles"
+    ],
+    [
+      "Grape",
+      "Leaf Blight/Isariopsis Leaf Spot"
+    ],
+    [
+      "Orange/Citrus",
+      "Healthy"
+    ],
+    [
+      "Orange/Citrus",
+      "Huanglongbing/Citrus Greening"
+    ],
+    [
+      "Peach",
+      "Healthy"
+    ],
+    [
+      "Peach",
+      "Bacterial Spot"
+    ],
+    [
+      "Bell Pepper",
+      "Healthy"
+    ],
+    [
+      "Bell Pepper",
+      "Bacterial Spot"
+    ],
+    [
+      "Potato",
+      "Healthy"
+    ],
+    [
+      "Potato",
+      "Early Blight"
+    ],
+    [
+      "Potato",
+      "Late Blight"
+    ],
+    [
+      "Raspberry",
+      "Healthy"
+    ],
+    [
+      "Soybean",
+      "Healthy"
+    ],
+    [
+      "Soybean",
+      "Frog Leaf Eye"
+    ],
+    [
+      "Soybean",
+      "Mosaic"
+    ],
+    [
+      "Squash",
+      "Healthy"
+    ],
+    [
+      "Squash",
+      "Powdery Mildew"
+    ],
+    [
+      "Strawberry",
+      "Healthy"
+    ],
+    [
+      "Strawberry",
+      "Leaf Scorch"
+    ],
+    [
+      "Tomato",
+      "Healthy"
+    ],
+    [
+      "Tomato",
+      "Bacterial Spot"
+    ],
+    [
+      "Tomato",
+      "Early Blight"
+    ],
+    [
+      "Tomato",
+      "Late Blight"
+    ],
+    [
+      "Tomato",
+      "Leaf Mold"
+    ],
+    [
+      "Tomato",
+      "Septoria Leaf Spot"
+    ],
+    [
+      "Tomato",
+      "Spider Mites/Two-Spotted Spider Mite"
+    ],
+    [
+      "Tomato",
+      "Target Spot"
+    ],
+    [
+      "Tomato",
+      "Tomato Yellow Leaf Curl Virus"
+    ],
+    [
+      "Tomato",
+      "Tomato Mosaic Virus"
+    ],
+    [
+      "Mango",
+      "Healthy"
+    ],
+    [
+      "Mango",
+      "Anthracnose"
+    ],
+    [
+      "Mango",
+      "Bacterial Canker"
+    ],
+    [
+      "Mango",
+      "Cutting Weevil"
+    ],
+    [
+      "Mango",
+      "Die Back"
+    ],
+    [
+      "Mango",
+      "Gall Midge"
+    ],
+    [
+      "Mango",
+      "Powdery Mildew"
+    ],
+    [
+      "Mango",
+      "Sooty Mould"
+    ],
+    [
+      "Cashew",
+      "Healthy"
+    ],
+    [
+      "Cashew",
+      "Leaf Miner"
+    ],
+    [
+      "Cashew",
+      "Red Rust"
+    ],
+    [
+      "Cassava",
+      "Healthy"
+    ],
+    [
+      "Cassava",
+      "Brown Spot"
+    ],
+    [
+      "Cassava",
+      "Mosaic"
+    ],
+    [
+      "Chilli",
+      "Healthy"
+    ],
+    [
+      "Chilli",
+      "Nutrition Deficiency"
+    ],
+    [
+      "Chilli",
+      "White Spot"
+    ],
+    [
+      "Cotton",
+      "Healthy"
+    ],
+    [
+      "Cotton",
+      "Bacterial Blight"
+    ],
+    [
+      "Cotton",
+      "Curl Virus"
+    ],
+    [
+      "Groundnut",
+      "Healthy"
+    ],
+    [
+      "Groundnut",
+      "Late Leaf Spot"
+    ],
+    [
+      "Groundnut",
+      "Nutrition Deficiency"
+    ],
+    [
+      "Rice",
+      "Healthy"
+    ],
+    [
+      "Rice",
+      "Brown Spot"
+    ],
+    [
+      "Rice",
+      "Leaf Blast"
+    ],
+    [
+      "Wheat",
+      "Healthy"
+    ],
+    [
+      "Wheat",
+      "Brown Rust"
+    ],
+    [
+      "Wheat",
+      "Yellow Rust"
+    ],
+    [
+      "Papaya",
+      "Healthy"
+    ],
+    [
+      "Sugarcane",
+      "Healthy"
+    ]
+  ],
+  "activation_rules": {
+    "canonical_label": "Crop__PlantPart__Condition",
+    "train_val_test": "70/15/15",
+    "split_grouping": [
+      "plant_id",
+      "capture_session_id",
+      "field_or_plot_id"
+    ],
+    "disease_subclass_requires": [
+      "source_inspected",
+      "label_verified",
+      "knowledge_record",
+      "license_record"
+    ],
+    "no_invented_labels": true
+  },
+  "source_records": [
+    {
+      "id": "plantvillage",
+      "url": "https://github.com/spMohanty/PlantVillage-Dataset/blob/master/README_HF.md"
+    },
+    {
+      "id": "mendeley_15crop",
+      "url": "https://data.mendeley.com/datasets/8fr7grr73p/1",
+      "license": "CC BY 4.0"
+    },
+    {
+      "id": "mendeley_fc45dhlpd",
+      "url": "https://data.mendeley.com/datasets/ph9g2cfxwm/1",
+      "license": "CC BY 4.0"
+    },
+    {
+      "id": "mendeley_fruit_leaf_6crop",
+      "url": "https://data.mendeley.com/datasets/fhbvmpcyy2/1",
+      "license": "CC BY 4.0"
+    },
+    {
+      "id": "frontiers_2026_label_crosscheck",
+      "url": "https://www.frontiersin.org/journals/plant-science/articles/10.3389/fpls.2026.1901116/full"
+    }
+  ]
+}
