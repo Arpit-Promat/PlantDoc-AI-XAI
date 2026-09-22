@@ -257,10 +257,53 @@ except Exception as e:
 
 IMG_SIZE = 224
 
+# Leaf / non-leaf gate.
+# A stricter threshold prevents ordinary objects, food, people, documents,
+# screenshots, etc. from being passed to the disease classifier.
+LEAF_DETECTOR_THRESHOLD = 0.65
+
 
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
+
+@st.cache_resource
+def load_leaf_detector():
+
+    detector = load_model(
+        "models/leaf_detector_model.keras",
+        compile=False
+    )
+
+    with open(
+        "models/leaf_detector_classes.json",
+        "r"
+    ) as f:
+        detector_classes = json.load(f)
+
+    return detector, detector_classes
+
+
+def get_leaf_probability(image_array, detector, detector_classes):
+
+    raw_value = float(
+        detector.predict(
+            image_array,
+            verbose=0
+        )[0][0]
+    )
+
+    leaf_index = int(
+        detector_classes.get("leaf", 0)
+    )
+
+    # The binary model's sigmoid output corresponds to the class index
+    # learned by flow_from_directory. Convert it to P(leaf).
+    if leaf_index == 0:
+        return 1.0 - raw_value
+
+    return raw_value
+
 
 def clean_class_name(name):
 
@@ -683,6 +726,65 @@ image_array = preprocess_image(
 
 
 # ============================================================
+# LEAF / NON-LEAF VALIDATION
+# ============================================================
+
+try:
+
+    leaf_detector, leaf_detector_classes = load_leaf_detector()
+
+    leaf_probability = get_leaf_probability(
+        image_array,
+        leaf_detector,
+        leaf_detector_classes
+    )
+
+except Exception as detector_error:
+
+    st.error("❌ Leaf validation model could not be loaded.")
+    st.error(str(detector_error))
+    st.stop()
+
+
+# Do not allow the disease classifier to run on non-leaf images.
+if leaf_probability < LEAF_DETECTOR_THRESHOLD:
+
+    st.error(
+        f"🚫 NOT A LEAF — ATHARVADRISHTI cannot analyze this image as a plant leaf."
+    )
+
+    st.warning(
+        f"Leaf detector confidence: {leaf_probability * 100:.2f}%. "
+        "Please capture or upload a clear photo containing a visible plant leaf."
+    )
+
+    st.markdown(
+        "### 📷 Try again with:"
+    )
+
+    tip1, tip2, tip3 = st.columns(3)
+
+    with tip1:
+        st.write("🌿 **A visible leaf**")
+        st.caption("Keep most of the leaf inside the frame.")
+
+    with tip2:
+        st.write("💡 **Good lighting**")
+        st.caption("Avoid very dark or blurry images.")
+
+    with tip3:
+        st.write("🎯 **Close framing**")
+        st.caption("Avoid objects, faces, buildings or full scenes.")
+
+    st.stop()
+
+
+st.success(
+    f"✅ Leaf detected — confidence {leaf_probability * 100:.2f}%"
+)
+
+
+# ============================================================
 # PREDICTION
 # ============================================================
 
@@ -782,7 +884,8 @@ with info_col2:
             "Original Size": f"{width} × {height} px",
             "Model Input Size": "224 × 224 px",
             "Image Type": "RGB Leaf Image",
-            "Analysis": "Plant Disease Detection"
+            "Leaf Detector": f"{leaf_probability * 100:.2f}% leaf",
+            "Analysis": "Plant Health Analysis"
         }
 
         for key, value in info_data.items():
