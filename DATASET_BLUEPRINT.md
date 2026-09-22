@@ -11,20 +11,20 @@
 
 | Track | Target images | Purpose |
 |---|---:|---|
-| Leaf condition | **53,200** | 76 leaf condition classes × 700 target images/class |
+| Leaf condition | **52,500** | 75 leaf condition classes × 700 target images/class |
 | Hard negatives / non-leaf | **5,000** | Reject people, objects, food, documents, screenshots, backgrounds, etc. |
 | Fruit | **8,000** | Plant-part + crop + healthy/diseased/damaged data; disease subclasses enabled only after label audit |
 | Flower | **4,000** | Plant-part recognition first; disease taxonomy added only after verified flower-disease sources are curated |
-| **Total** | **70,200** | V1 unique image target |
+| **Total** | **69,500** | V1 unique image target |
 
 The plant-part and crop labels are metadata attached to the same images; they are not additional images.
 
 ### V1 taxonomy
 
 - 24 crops
-- 76 leaf condition labels
+- 75 leaf condition labels
   - 24 healthy labels
-  - 52 disease / pest / stress labels
+  - 51 disease / pest / stress labels
 - 4 plant-part labels
   - leaf
   - fruit
@@ -120,7 +120,7 @@ Do not create synonyms such as Tomato-EarlyBlight, Tomato_Early_Blight, or Tomat
 | 22 | Wheat | Healthy | Brown Rust; Yellow Rust | 2,100 |
 | 23 | Papaya | Healthy | **Disease subclasses pending source/label audit** | 700 |
 | 24 | Sugarcane | Healthy | **Disease subclasses pending source/label audit** | 700 |
-| | **Total** | **24** | **52 defined disease/pest/stress labels** | **53,200** |
+| | **Total** | **24** | **51 defined disease/pest/stress labels** | **52,500** |
 
 Papaya and Sugarcane are included as crops, but no disease class is to be invented. Their disease labels are activated only after the downloaded source folders are inspected and a source-to-canonical mapping is recorded.
 
@@ -751,7 +751,7 @@ The system should never manufacture a disease name, cause, cure, pesticide, or t
 ## 22. Dataset roadmap beyond V1
 
 ### V1
-**24 crops + 76 leaf labels + fruit/flower foundation**
+**24 crops + 75 leaf labels + fruit/flower foundation**
 
 ### V2
 Add:
