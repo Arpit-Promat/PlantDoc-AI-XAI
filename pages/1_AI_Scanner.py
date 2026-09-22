@@ -645,24 +645,52 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-uploaded_file = st.file_uploader(
-    "📤 Upload Leaf Image",
-    type=[
-        "jpg",
-        "jpeg",
-        "png"
-    ],
-    help="Upload a clear JPG, JPEG or PNG image of a plant leaf."
-)
+if "camera_open" not in st.session_state:
+    st.session_state["camera_open"] = False
 
-camera_file = st.camera_input(
-    "📷 Or Capture Leaf with Camera",
-    key="leaf_camera",
-    help="Use your webcam or phone camera to capture a clear image of the plant leaf.",
-    resolution="720p",
-)
+upload_col, camera_col = st.columns(2)
 
-# Use the camera image when one has been captured; otherwise use the uploaded file.
+with upload_col:
+    uploaded_file = st.file_uploader(
+        "📤 Upload Leaf Image",
+        type=[
+            "jpg",
+            "jpeg",
+            "png"
+        ],
+        help="Upload a clear JPG, JPEG or PNG image of a plant leaf."
+    )
+
+with camera_col:
+    if not st.session_state["camera_open"]:
+        if st.button(
+            "📷 Open Camera",
+            use_container_width=True,
+            key="open_leaf_camera"
+        ):
+            st.session_state["camera_open"] = True
+            st.rerun()
+    else:
+        if st.button(
+            "✕ Close Camera",
+            use_container_width=True,
+            key="close_leaf_camera"
+        ):
+            st.session_state["camera_open"] = False
+            st.rerun()
+
+camera_file = None
+
+# The camera widget is created only after the user clicks Open Camera.
+if st.session_state["camera_open"]:
+    camera_file = st.camera_input(
+        "📷 Capture Leaf",
+        key="leaf_camera",
+        help="Capture a clear image of the plant leaf.",
+        resolution="720p",
+    )
+
+# Use the camera image when available; otherwise use the uploaded file.
 input_file = camera_file if camera_file is not None else uploaded_file
 
 
@@ -675,7 +703,7 @@ if input_file is None:
     with st.container(border=True):
 
         st.info(
-            "👆 Upload a leaf image above to start AI analysis."
+            "👆 Upload a leaf image or click **📷 Open Camera** to capture one."
         )
 
         st.markdown("### 💡 For better results")
@@ -691,9 +719,46 @@ if input_file is None:
             st.caption("Avoid extremely dark photographs.")
 
         with tips_col3:
-            st.write("📷 **Good framing**")
+            st.write("🎯 **Good framing**")
             st.caption("Keep the leaf clearly visible.")
 
+    st.stop()
+
+
+# ============================================================
+# IMAGE PREVIEW + SUBMIT
+# ============================================================
+
+st.markdown("### 🖼️ Ready to Analyze")
+
+preview_col, submit_col = st.columns([1.4, 0.6])
+
+with preview_col:
+    try:
+        preview_image = Image.open(input_file).convert("RGB")
+        st.image(
+            preview_image,
+            caption="Preview — press Analyze when you are ready.",
+            width="stretch"
+        )
+    except Exception:
+        st.error("❌ Could not preview this image.")
+        st.stop()
+
+with submit_col:
+    st.markdown("#### 🚀 Submit")
+    st.caption("The AI will not start until you press the button below.")
+    analyze_requested = st.button(
+        "🧠 Analyze Image",
+        use_container_width=True,
+        type="primary",
+        key="analyze_leaf_image",
+    )
+
+if not analyze_requested:
+    st.info(
+        "✅ Image selected. Press **🧠 Analyze Image** to start leaf validation and disease analysis."
+    )
     st.stop()
 
 
