@@ -2,11 +2,11 @@
   "project": "ATHARVADRISHTI",
   "version": "v1.0",
   "repo": "Arpit-Promat/PlantDoc-AI-XAI",
-  "target_unique_images": 70200,
+  "target_unique_images": 69500,
   "tracks": {
     "leaf_condition": {
-      "images": 53200,
-      "classes": 76,
+      "images": 52500,
+      "classes": 75,
       "target_per_class": 700
     },
     "hard_negatives": {
@@ -71,8 +71,8 @@
     "Papaya",
     "Sugarcane"
   ],
-  "leaf_class_count": 76,
-  "leaf_target_images": 53200,
+  "leaf_class_count": 75,
+  "leaf_target_images": 52500,
   "target_per_leaf_class": 700,
   "leaf_classes": [
     [
