@@ -612,12 +612,22 @@ uploaded_file = st.file_uploader(
     help="Upload a clear JPG, JPEG or PNG image of a plant leaf."
 )
 
+camera_file = st.camera_input(
+    "📷 Or Capture Leaf with Camera",
+    key="leaf_camera",
+    help="Use your webcam or phone camera to capture a clear image of the plant leaf.",
+    resolution="720p",
+)
+
+# Use the camera image when one has been captured; otherwise use the uploaded file.
+input_file = camera_file if camera_file is not None else uploaded_file
+
 
 # ============================================================
 # NO IMAGE
 # ============================================================
 
-if uploaded_file is None:
+if input_file is None:
 
     with st.container(border=True):
 
@@ -651,7 +661,7 @@ if uploaded_file is None:
 try:
 
     original_image = Image.open(
-        uploaded_file
+        input_file
     ).convert("RGB")
 
 except Exception:
@@ -705,15 +715,15 @@ try:
     authenticated_user = current_user()
     if authenticated_user:
         scan_session_key = make_session_key(
-            uploaded_file.getvalue(),
-            uploaded_file.name,
+            input_file.getvalue(),
+            input_file.name,
             predicted_name,
         )
         if st.session_state.get("last_history_scan_key") != scan_session_key:
             save_scan(
                 user_id=int(authenticated_user["id"]),
                 session_key=scan_session_key,
-                filename=uploaded_file.name,
+                filename=input_file.name,
                 prediction=predicted_name,
                 confidence=round(confidence, 2),
                 status="completed",
@@ -768,7 +778,7 @@ with info_col2:
         width, height = original_image.size
 
         info_data = {
-            "File Name": uploaded_file.name,
+            "File Name": input_file.name,
             "Original Size": f"{width} × {height} px",
             "Model Input Size": "224 × 224 px",
             "Image Type": "RGB Leaf Image",
