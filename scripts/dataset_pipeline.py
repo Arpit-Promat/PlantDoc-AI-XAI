@@ -9,6 +9,7 @@ import json
 import os
 import urllib.request
 import zipfile
+import shutil
 from pathlib import Path
 
 try:
@@ -154,6 +155,54 @@ def audit(source_id=None):
     write_csv(META / name, rows)
     print("Audited", len(rows), "images ->", META / name)
 
+def curate(source_id=None, target_total=57000, seed=42):
+    """Create a deterministic, balanced curated manifest without modifying raw data.
+
+    Selection is class-aware when source labels are available, removes exact duplicates,
+    and caps the final corpus at target_total. This produces a manifest first; copying
+    images into a training directory is a separate step.
+    """
+    audit_file = META / ("image_audit_" + source_id + ".csv" if source_id else "image_audit.csv")
+    if not audit_file.exists():
+        audit(source_id)
+    with audit_file.open(newline="", encoding="utf-8") as handle:
+        rows = [r for r in csv.DictReader(handle) if r.get("valid_image") == "True"]
+    seen = set()
+    unique = []
+    for row in rows:
+        digest = row.get("sha256", "")
+        if not digest or digest in seen:
+            continue
+        seen.add(digest)
+        unique.append(row)
+    # Deterministic ordering avoids random re-selection on every run.
+    unique.sort(key=lambda r: hashlib.sha256((r.get("source_original_path", "") + str(seed)).encode()).hexdigest())
+    if target_total <= 0:
+        raise SystemExit("target_total must be positive")
+    if len(unique) > target_total:
+        # Round-robin across source labels gives broad class coverage before the cap.
+        groups = {}
+        for row in unique:
+            groups.setdefault(row.get("source_label", "unknown"), []).append(row)
+        selected = []
+        while len(selected) < target_total and groups:
+            empty = []
+            for label, items in groups.items():
+                if items and len(selected) < target_total:
+                    selected.append(items.pop())
+                if not items:
+                    empty.append(label)
+            for label in empty:
+                groups.pop(label, None)
+        unique = selected
+    out = META / "curated_manifest.csv"
+    for i, row in enumerate(unique, 1):
+        row["curation_id"] = f"AD_CURATED_{i:06d}"
+        row["curation_target"] = str(target_total)
+        row["curation_status"] = "selected"
+    write_csv(out, unique)
+    print("Curated unique images:", len(unique), "->", out)
+
 def write_csv(path, rows):
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
@@ -187,6 +236,7 @@ def main():
     p = sub.add_parser("download"); p.add_argument("source_id")
     p = sub.add_parser("audit"); p.add_argument("--source", dest="source_id")
     sub.add_parser("manifest")
+    p = sub.add_parser("curate"); p.add_argument("--source", dest="source_id"); p.add_argument("--target-total", type=int, default=57000); p.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
     if args.command == "init":
         init_dirs()
@@ -196,6 +246,8 @@ def main():
         audit(args.source_id)
     elif args.command == "manifest":
         manifest()
+    elif args.command == "curate":
+        curate(args.source_id, args.target_total, args.seed)
 
 if __name__ == "__main__":
     main()
