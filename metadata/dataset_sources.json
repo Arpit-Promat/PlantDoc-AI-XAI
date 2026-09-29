@@ -1,0 +1,72 @@
+{
+  "project": "ATHARVADRISHTI",
+  "updated": "2026-09-29",
+  "sources": [
+    {
+      "id": "agri_foundation_145k",
+      "name": "Agri-Foundation-145k",
+      "official_url": "https://zenodo.org/records/18214758",
+      "download_url": "https://zenodo.org/records/18214758/files/agri_foundation_v1.zip?download=1",
+      "expected_images": 144751,
+      "expected_classes": 215,
+      "license_status": "AUDIT_REQUIRED",
+      "bucket": "commercial_candidate",
+      "notes": "Aggregate of 8 sources; preserve underlying source provenance and license metadata."
+    },
+    {
+      "id": "plantvillage",
+      "name": "PlantVillage Dataset",
+      "official_url": "https://github.com/spMohanty/PlantVillage-Dataset",
+      "download_url": null,
+      "expected_images": 54306,
+      "expected_classes": 38,
+      "license_status": "VERIFY_SOURCE_TERMS",
+      "bucket": "plantvillage",
+      "notes": "Use official source and preserve leaf grouping/split metadata."
+    },
+    {
+      "id": "plantdoc",
+      "name": "PlantDoc Dataset",
+      "official_url": "https://github.com/pratikkayal/PlantDoc-Dataset",
+      "download_url": null,
+      "expected_images": 2598,
+      "expected_classes": null,
+      "license_status": "VERIFY_SOURCE_TERMS",
+      "bucket": "plantdoc",
+      "notes": "Field-style images; use for robustness and compatible labels."
+    },
+    {
+      "id": "mendeley_15crop_45disease",
+      "name": "15 Crop and 45 Disease and Healthy dataset",
+      "official_url": "https://data.mendeley.com/datasets/8fr7grr73p/1",
+      "download_url": null,
+      "expected_images": null,
+      "expected_classes": 45,
+      "license_status": "CC BY 4.0",
+      "bucket": "mendeley",
+      "notes": "Indian-relevant multi-crop disease dataset."
+    },
+    {
+      "id": "mendeley_fruit_leaf_6crop",
+      "name": "Fruit and Leaf six-crop dataset",
+      "official_url": "https://data.mendeley.com/datasets/fhbvmpcyy2/1",
+      "download_url": null,
+      "expected_images": null,
+      "expected_classes": null,
+      "license_status": "VERIFY_SOURCE_TERMS",
+      "bucket": "mendeley",
+      "notes": "Apple, Banana, Citrus, Guava, Mango and Papaya; useful for plant-part expansion."
+    },
+    {
+      "id": "plantwild",
+      "name": "PlantWild",
+      "official_url": "https://huggingface.co/datasets/uqtwei2/PlantWild",
+      "download_url": null,
+      "expected_images": 18542,
+      "expected_classes": 89,
+      "license_status": "CC BY-NC-ND 4.0",
+      "bucket": "research_only",
+      "notes": "Keep outside commercial training unless licensing is separately cleared."
+    }
+  ]
+}
